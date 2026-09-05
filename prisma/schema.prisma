@@ -1,8 +1,8 @@
 generator client {
-  provider      = "prisma-client"
-  output        = "../app/generated/prisma"
-  // cPanel / CloudLinux hosts need these engines, not only the Mac native one
-  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "rhel-openssl-1.0.x", "rhel-openssl-1.1.x", "rhel-openssl-3.0.x"]
+  provider   = "prisma-client"
+  output     = "../app/generated/prisma"
+  // JS driver only — CloudLinux blocks Prisma's native .so engine (open EEXIST)
+  engineType = "client"
 }
 
 datasource db {

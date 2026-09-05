@@ -1,9 +1,7 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "../app/generated/prisma/client";
 import { DEFAULT_PAGES, DEFAULT_RATES } from "../lib/defaults";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/prisma";
 
 async function main() {
   const email = (process.env.ADMIN_EMAIL ?? "admin@goldinvest.local").toLowerCase();
