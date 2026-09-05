@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?  @db.Text
+  content     Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Rate {
+  id        String   @id @default(cuid())
+  metal     String
+  product   String
+  unit      String   @default("RM / Gram")
+  buyPrice  Decimal  @db.Decimal(12, 2)
+  sellPrice Decimal  @db.Decimal(12, 2)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  message   String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+/// Latest GoldAPI snapshot per metal (public pages read this, never the API).
+model MetalQuote {
+  id            String   @id @default(cuid())
+  metal         String
+  currency      String
+  symbol        String
+  price         Decimal  @db.Decimal(16, 6)
+  bid           Decimal? @db.Decimal(16, 6)
+  ask           Decimal? @db.Decimal(16, 6)
+  unit          String   @default("troy_ounce")
+  priceGram     Decimal? @db.Decimal(16, 6)
+  priceKg       Decimal? @db.Decimal(16, 6)
+  priceTael     Decimal? @db.Decimal(16, 6)
+  melt24k       Decimal? @db.Decimal(16, 6)
+  melt22k       Decimal? @db.Decimal(16, 6)
+  melt21k       Decimal? @db.Decimal(16, 6)
+  melt18k       Decimal? @db.Decimal(16, 6)
+  change        Decimal? @db.Decimal(12, 6)
+  changePercent Decimal? @db.Decimal(8, 4)
+  raw           Json
+  fetchedAt     DateTime
+  source        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([metal, currency])
+}
+
+/// Admin-configured daily refresh times, e.g. "06:30" in RATE_TIMEZONE.
+model RateRefreshTime {
+  id        String   @id @default(cuid())
+  time      String   @unique
+  createdAt DateTime @default(now())
+}
+
+/// Prevents the same scheduled slot from fetching twice in one day.
+model RateFetchLog {
+  slotKey   String   @id
+  fetchedAt DateTime
+  source    String
+  ok        Boolean  @default(true)
+  error     String?  @db.Text
+}
+
+/// Price book assigned to members. Offsets apply on top of GoldAPI market rates.
+model RateBook {
+  id          String         @id @default(cuid())
+  name        String
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  adjustments RateBookAdj[]
+  members     Member[]
+}
+
+model RateBookAdj {
+  id        String   @id @default(cuid())
+  bookId    String
+  metal     String
+  unitKey   String
+  buyDelta  Decimal  @default(0) @db.Decimal(16, 6)
+  sellDelta Decimal  @default(0) @db.Decimal(16, 6)
+  book      RateBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, metal, unitKey])
+}
+
+/// Portal member. id 1 => memberId SHB0000001. They cannot change memberId.
+model Member {
+  id           Int       @id @default(autoincrement())
+  memberId     String    @unique
+  username     String    @unique
+  passwordHash String
+  phone        String
+  email        String    @unique
+  fullName     String
+  isActive     Boolean   @default(true)
+  rateBookId   String?
+  rateBook     RateBook? @relation(fields: [rateBookId], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
