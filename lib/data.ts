@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { startRateScheduler } from "@/lib/rate-scheduler";
+
+startRateScheduler();
 import {
   DEFAULT_ABOUT,
   DEFAULT_CONTACT,

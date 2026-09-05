@@ -1,6 +1,5 @@
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { startRateScheduler } = await import("./lib/rate-scheduler");
-    startRateScheduler();
-  }
+  // Do not import Prisma here. On cPanel, loading the Prisma engine
+  // during this hook crashes the process (open EEXIST).
+  // The rate scheduler starts from lib/data.ts on the first page request.
 }
