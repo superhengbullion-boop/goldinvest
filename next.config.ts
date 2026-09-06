@@ -1,15 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: [
-    "@prisma/client",
-    "@prisma/adapter-mariadb",
-    "mariadb",
-    "prisma",
-  ],
-  outputFileTracingIncludes: {
-    "**": ["./app/generated/prisma/**/*"],
-  },
+  // mariadb uses native Node modules — keep it out of the webpack bundle
+  serverExternalPackages: ["mariadb"],
   experimental: {
     serverActions: {
       bodySizeLimit: "8mb",

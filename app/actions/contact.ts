@@ -1,7 +1,6 @@
 "use server";
-
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { execute, newId } from "@/lib/db";
 import { verifyRecaptchaToken } from "@/lib/recaptcha";
 import { notifyTelegramContact } from "@/lib/telegram";
 
@@ -14,9 +13,9 @@ export async function submitContact(
   _state: ContactFormState,
   formData: FormData,
 ): Promise<ContactFormState> {
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-  const phone = String(formData.get("phone") ?? "").trim();
+  const name    = String(formData.get("name")    ?? "").trim();
+  const email   = String(formData.get("email")   ?? "").trim();
+  const phone   = String(formData.get("phone")   ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
 
   if (!name || !email || !phone || !message) {
@@ -24,20 +23,17 @@ export async function submitContact(
   }
 
   const captcha = await verifyRecaptchaToken(
-    String(formData.get("recaptchaToken") ?? ""),
-    "contact",
+    String(formData.get("recaptchaToken") ?? ""), "contact",
   );
   if (!captcha.ok) return captcha;
 
-  await prisma.contactMessage.create({
-    data: { name, email, phone, message },
-  });
+  await execute(
+    "INSERT INTO `ContactMessage`(`id`,`name`,`email`,`phone`,`message`,`read`,`createdAt`) VALUES(?,?,?,?,?,0,NOW(3))",
+    [newId(), name, email, phone, message],
+  );
 
-  try {
-    await notifyTelegramContact({ name, email, phone, message });
-  } catch (error) {
-    console.error("[telegram] notify failed", error);
-  }
+  try { await notifyTelegramContact({ name, email, phone, message }); }
+  catch (e) { console.error("[telegram] notify failed", e); }
 
   revalidatePath("/admin/messages");
   revalidatePath("/admin", "layout");

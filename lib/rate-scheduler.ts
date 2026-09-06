@@ -1,6 +1,5 @@
 import "server-only";
-
-import { prisma } from "@/lib/prisma";
+import { execute, query, queryOne } from "@/lib/db";
 import { refreshMetalQuotes } from "@/lib/goldapi";
 import { getZonedNow, RATE_TIMEZONE, scheduleSlotKey } from "@/lib/rate-time";
 
@@ -14,35 +13,36 @@ declare global {
 export async function runScheduledRateRefresh(at = new Date()) {
   if (globalThis.__rateSchedulerBusy) return { skipped: true as const };
   globalThis.__rateSchedulerBusy = true;
-
   try {
     const { date, time } = getZonedNow(at);
-    const slots = await prisma.rateRefreshTime.findMany({ select: { time: true } });
-    const match = slots.find((slot) => slot.time === time);
+    const slots = await query<{ time: string }>("SELECT `time` FROM `RateRefreshTime`");
+    const match = slots.find((s) => s.time === time);
     if (!match) return { skipped: true as const };
-
     const slotKey = scheduleSlotKey(date, match.time);
-    const existing = await prisma.rateFetchLog.findUnique({ where: { slotKey } });
+    const existing = await queryOne<{ ok: unknown }>(
+      "SELECT `ok` FROM `RateFetchLog` WHERE `slotKey`=? LIMIT 1", [slotKey],
+    );
     if (existing?.ok) return { skipped: true as const };
-
     const source = `schedule:${match.time}`;
     try {
       await refreshMetalQuotes(source);
-      await prisma.rateFetchLog.upsert({
-        where: { slotKey },
-        create: { slotKey, fetchedAt: new Date(), source, ok: true },
-        update: { fetchedAt: new Date(), source, ok: true, error: null },
-      });
+      await execute(
+        `INSERT INTO \`RateFetchLog\`(\`slotKey\`,\`fetchedAt\`,\`source\`,\`ok\`,\`error\`)
+         VALUES(?,NOW(3),?,1,NULL)
+         ON DUPLICATE KEY UPDATE \`fetchedAt\`=NOW(3),\`source\`=VALUES(\`source\`),\`ok\`=1,\`error\`=NULL`,
+        [slotKey, source],
+      );
       console.log(`[rates] Refreshed GoldAPI quotes for ${slotKey} (${RATE_TIMEZONE})`);
       return { skipped: false as const, slotKey };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await prisma.rateFetchLog.upsert({
-        where: { slotKey },
-        create: { slotKey, fetchedAt: new Date(), source, ok: false, error: message },
-        update: { fetchedAt: new Date(), source, ok: false, error: message },
-      });
-      throw error;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await execute(
+        `INSERT INTO \`RateFetchLog\`(\`slotKey\`,\`fetchedAt\`,\`source\`,\`ok\`,\`error\`)
+         VALUES(?,NOW(3),?,0,?)
+         ON DUPLICATE KEY UPDATE \`fetchedAt\`=NOW(3),\`source\`=VALUES(\`source\`),\`ok\`=0,\`error\`=VALUES(\`error\`)`,
+        [slotKey, source, msg],
+      );
+      throw e;
     }
   } finally {
     globalThis.__rateSchedulerBusy = false;
@@ -52,15 +52,9 @@ export async function runScheduledRateRefresh(at = new Date()) {
 export function startRateScheduler() {
   if (globalThis.__rateSchedulerStarted) return;
   globalThis.__rateSchedulerStarted = true;
-
   console.log(`[rates] Scheduler started (${RATE_TIMEZONE}), polling every ${POLL_MS / 1000}s`);
-  void runScheduledRateRefresh().catch((error) => {
-    console.error("[rates] Initial schedule check failed:", error);
-  });
-
+  void runScheduledRateRefresh().catch((e) => console.error("[rates] Initial check failed:", e));
   setInterval(() => {
-    void runScheduledRateRefresh().catch((error) => {
-      console.error("[rates] Scheduled refresh failed:", error);
-    });
+    void runScheduledRateRefresh().catch((e) => console.error("[rates] Scheduled refresh failed:", e));
   }, POLL_MS);
 }
