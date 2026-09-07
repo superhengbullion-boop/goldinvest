@@ -1,8 +1,8 @@
 "use server";
 
 import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { getSession } from "@/lib/session";
+import { getUploadFilePath, getUploadsDir } from "@/lib/uploads";
 
 const ALLOWED = new Set([
   "image/jpeg",
@@ -37,9 +37,8 @@ export async function uploadMedia(formData: FormData) {
     throw new Error("File must be 8MB or smaller.");
   }
 
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
+  await mkdir(getUploadsDir(), { recursive: true });
   const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${EXT[file.type]}`;
-  await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
+  await writeFile(getUploadFilePath(name), Buffer.from(await file.arrayBuffer()));
   return `/uploads/${name}`;
 }
