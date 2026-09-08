@@ -26,19 +26,19 @@ export function MetalRateTable({
         <table className="w-full text-left">
           <thead className={headerClass}>
             <tr>
-              <th className="px-4 py-3 font-semibold">{metal}</th>
-              <th className="px-4 py-3 text-right font-semibold">Buy</th>
-              <th className="px-4 py-3 text-right font-semibold">Sell</th>
+              <th className="px-4 py-3 font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">{metal}</th>
+              <th className="px-4 py-3 text-right font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">Buy</th>
+              <th className="px-4 py-3 text-right font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">Sell</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.key} className="border-t border-white/10">
-                <td className="px-4 py-3">{row.label}</td>
-                <td className="px-4 py-3 text-right tabular-nums">
+                <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">{row.label}</td>
+                <td className="px-4 py-3 text-right tabular-nums max-md:px-2 max-md:py-2 max-md:text-sm">
                   {formatPrice(row.buy, row.digits)}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums">
+                <td className="px-4 py-3 text-right tabular-nums max-md:px-2 max-md:py-2 max-md:text-sm">
                   {formatPrice(row.sell, row.digits)}
                 </td>
               </tr>

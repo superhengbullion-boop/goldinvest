@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ContactForm } from "@/components/ContactForm";
 import { GoldButton } from "@/components/GoldButton";
 import { ProductIcon } from "@/components/ProductIcon";
+import { RichText } from "@/components/RichText";
 import { TrustedPartners } from "@/components/TrustedPartners";
 import { getContact, getHome } from "@/lib/data";
 
@@ -19,17 +20,18 @@ export default async function HomePage() {
   return (
     <div>
       <div className="relative">
-        <div className="relative mx-[10%] overflow-hidden rounded-[25px] max-md:mx-0 max-md:h-[42vh] max-md:rounded-none">
+        <div className="relative mx-[10%] overflow-hidden rounded-[25px] max-md:mx-0 max-md:rounded-none">
           <HeroBackdrop src={content.heroBackground} />
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
-          <div className="relative flex h-full items-center p-[3%] min-h-[420px] max-md:min-h-[42vh]">
-            <div className="w-[48%] max-md:w-[85%]">
+          <div className="relative flex min-h-[420px] items-center p-[3%] max-md:min-h-[42vh] max-md:px-5 max-md:py-10">
+            <div className="w-[48%] max-md:w-full">
               <h1 className="font-display text-5xl font-semibold leading-tight text-gold max-md:text-3xl">
                 {content.heroTitle}
               </h1>
-              <p className="mt-4 text-[1.15rem] leading-8 text-ivory/90 max-md:text-[0.85rem] max-md:leading-6">
-                {content.heroSubtitle}
-              </p>
+              <RichText
+                html={content.heroSubtitle}
+                className="mt-4 text-[1.15rem] leading-8 text-ivory/90 max-md:text-[0.95rem] max-md:leading-6"
+              />
               <div className="mt-[5%] flex gap-4">
                 <GoldButton href="/contact">{content.heroCta}</GoldButton>
               </div>
@@ -40,7 +42,7 @@ export default async function HomePage() {
 
       <TrustedPartners title={content.partnersTitle} partners={content.partners} />
 
-      <section className="mx-[10%] mt-10 flex gap-8 max-md:mx-[5%] max-md:flex-col max-md:gap-4">
+      <section className="mx-[10%] mt-10 grid grid-cols-3 gap-8 max-lg:grid-cols-1 max-md:mx-[5%] max-md:gap-4">
         {[
           {
             title: content.missionTitle,
@@ -60,7 +62,7 @@ export default async function HomePage() {
         ].map((card) => (
           <div
             key={card.title}
-            className="relative flex min-h-[200px] flex-1 flex-col justify-center overflow-hidden rounded-lg bg-black p-8 max-md:min-h-[180px] max-md:p-8"
+            className="relative flex min-h-[200px] flex-col rounded-lg bg-black max-md:min-h-0"
             style={
               card.image
                 ? {
@@ -72,24 +74,31 @@ export default async function HomePage() {
             }
           >
             <div className="absolute inset-0 bg-gradient-to-r from-black from-35% via-black/80 to-black/20" />
-            <p className="relative z-[1] text-[1.6rem] text-gold">{card.title}</p>
-            <p className="relative z-[1] mt-2 max-w-[62%] text-[1rem] font-normal text-ivory/90 max-md:max-w-none">
-              {card.text}
-            </p>
+            <div className="relative z-[1] flex flex-col p-8 max-md:p-6">
+              <p className="min-h-[3.5rem] text-[1.6rem] leading-tight text-gold max-md:min-h-0 max-md:text-xl">
+                {card.title}
+              </p>
+              <RichText
+                html={card.text}
+                className="mt-3 max-w-[62%] text-[1rem] leading-7 text-ivory/90 max-md:max-w-none"
+              />
+            </div>
           </div>
         ))}
       </section>
 
       <section className="pt-[5%]">
-        <p className="text-center text-[1.6rem]">{content.productsTitle}</p>
+        <p className="text-center text-[1.6rem] max-md:px-[5%] max-md:text-xl">{content.productsTitle}</p>
         <div className="mx-[10%] mt-[3%] grid grid-cols-4 gap-8 max-lg:grid-cols-2 max-md:mx-[5%] max-md:grid-cols-1">
           {content.products.map((product) => (
             <article
               key={product.title}
-              className="flex min-h-[220px] flex-col justify-between rounded-xl bg-black p-6"
+              className="flex min-h-[220px] flex-col rounded-xl bg-black p-6"
             >
-              <ProductIcon name={product.icon} />
-              <p className="mt-8 text-[1rem] leading-6 text-ivory">{product.title}</p>
+              <div className="h-12 shrink-0 text-gold">
+                <ProductIcon name={product.icon} />
+              </div>
+              <p className="mt-6 text-[1rem] leading-6 text-ivory">{product.title}</p>
             </article>
           ))}
         </div>
@@ -100,13 +109,13 @@ export default async function HomePage() {
           {contact.content.title}
         </h2>
         <div className="mt-[3%] flex gap-8 rounded-xl bg-black p-[5%] max-md:flex-col max-md:bg-transparent">
-          <div className="flex-1">
-            <p className="text-[1rem] max-md:text-center">{contact.content.intro}</p>
-            <h3 className="py-[5%] font-display text-[1.4rem] text-gold">
+          <div className="flex-1 max-md:text-center">
+            <RichText html={contact.content.intro} className="text-[1rem]" />
+            <h3 className="py-[5%] font-display text-[1.4rem] text-gold max-md:text-xl">
               {contact.content.companyName}
             </h3>
             <p className="text-[1.2rem]">Contact Us</p>
-            <div className="w-[90%] py-[3%] text-[1rem] font-normal">
+            <div className="w-[90%] py-[3%] text-[1rem] font-normal max-md:mx-auto max-md:w-full">
               <p>Tel: {contact.content.tel}</p>
               <p>
                 Email:{" "}

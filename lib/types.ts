@@ -64,7 +64,10 @@ export type AboutContent = {
 export type TermsContent = {
   companyName: string;
   title: string;
-  sections: TermsSection[];
+  /** Full document below the title (rich HTML). */
+  body?: string;
+  /** Legacy structured clauses — migrated to `body` when editing. */
+  sections?: TermsSection[];
 };
 
 export type RatesPageContent = {
@@ -85,17 +88,28 @@ export type ContactContent = {
   email: string;
   address: string;
   hours: string;
+  mapEmbedUrl?: string;
 };
 
 export type PageSlug = "home" | "about" | "terms" | "rates" | "contact";
 
 export type PageField =
-  | { name: string; label: string; type: "text" | "textarea" | "image" }
+  | {
+      name: string;
+      label: string;
+      type: "text" | "textarea" | "richtext" | "image";
+      minHeight?: number;
+      hint?: string;
+    }
   | {
       name: string;
       label: string;
       type: "list";
-      itemFields: { name: string; label: string; type: "text" | "textarea" | "image" }[];
+      itemFields: {
+        name: string;
+        label: string;
+        type: "text" | "textarea" | "richtext" | "image";
+      }[];
     };
 
 export type AuthFormState =

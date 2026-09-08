@@ -43,7 +43,7 @@ export function TrustedPartners({
 
   return (
     <section className="pt-[3%]">
-      <p className="text-center text-[1.6rem] text-ivory">{title}</p>
+      <p className="text-center text-[1.6rem] text-ivory max-md:px-[5%] max-md:text-xl">{title}</p>
       <div className="partners-stage mt-8 py-6">
         <div className="partners-row partners-row--dim">
           <div className="partners-track partners-track--left">

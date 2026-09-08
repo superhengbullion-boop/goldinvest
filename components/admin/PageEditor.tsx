@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { updatePage } from "@/app/actions/admin";
 import { ImageField } from "@/components/admin/ImageField";
+import { RichTextField } from "@/components/admin/RichTextField";
 import type { PageField } from "@/lib/types";
 
 type Props = {
@@ -91,7 +92,17 @@ export function PageEditor({ slug, title, description, content, fields }: Props)
                         <span className="mb-1 block text-xs uppercase tracking-wide text-mist">
                           {itemField.label}
                         </span>
-                        {itemField.type === "textarea" ? (
+                        {itemField.type === "richtext" ? (
+                          <RichTextField
+                            label={itemField.label}
+                            value={item[itemField.name] ?? ""}
+                            onChange={(html) => {
+                              const next = [...items];
+                              next[index] = { ...next[index], [itemField.name]: html };
+                              setField(field.name, next);
+                            }}
+                          />
+                        ) : itemField.type === "textarea" ? (
                           <textarea
                             rows={3}
                             value={item[itemField.name] ?? ""}
@@ -148,6 +159,17 @@ export function PageEditor({ slug, title, description, content, fields }: Props)
             />
           );
         }
+        if (field.type === "richtext") {
+          return (
+            <RichTextField
+              key={field.name}
+              label={field.label}
+              value={value}
+              minHeight={field.minHeight}
+              onChange={(html) => setField(field.name, html)}
+            />
+          );
+        }
         return (
           <label key={field.name} className="block">
             <span className="mb-2 block text-sm text-mist">{field.label}</span>
@@ -165,6 +187,7 @@ export function PageEditor({ slug, title, description, content, fields }: Props)
                 className="w-full rounded-lg border border-gold/30 bg-ink px-4 py-3 outline-none focus:border-gold"
               />
             )}
+            {field.hint ? <p className="mt-2 text-xs text-mist">{field.hint}</p> : null}
           </label>
         );
       })}

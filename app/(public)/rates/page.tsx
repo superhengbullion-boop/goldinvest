@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MetalRateTable } from "@/components/MetalRateTable";
+import { RichText } from "@/components/RichText";
 import { getMetalQuotes, getRatesPage } from "@/lib/data";
 import { getMember } from "@/lib/member-session";
 import { applyAdjustments, metalBoard } from "@/lib/metal-quotes";
@@ -47,7 +48,10 @@ export default async function RatesPage() {
         <p className="text-[2rem] text-gold max-md:text-center max-md:text-[1.5rem]">
           {content.header}
         </p>
-        <p className="text-[1rem] max-md:mt-4 max-md:text-center">{content.headerText}</p>
+        <RichText
+          html={content.headerText}
+          className="text-[1rem] max-md:mt-4 max-md:text-center"
+        />
       </div>
 
       {!member?.rateBook ? (

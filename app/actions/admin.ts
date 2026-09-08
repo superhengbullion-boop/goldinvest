@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { asBool, execute, isDuplicateKey, newId, query, queryOne } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { isPageSlug, PAGE_META } from "@/lib/cms";
+import { sanitizePageContent } from "@/lib/richtext";
 import type { RateBookAdjRow } from "@/lib/data";
 
 async function requireAdmin() {
@@ -24,12 +25,14 @@ export async function updatePage(formData: FormData) {
   let content: unknown;
   try { content = JSON.parse(raw); } catch { throw new Error("Invalid content payload"); }
 
+  const sanitized = sanitizePageContent(slug, content as Record<string, unknown>);
+
   await execute(
     `INSERT INTO \`Page\`(\`id\`,\`slug\`,\`title\`,\`description\`,\`content\`,\`createdAt\`,\`updatedAt\`)
      VALUES(?,?,?,?,?,NOW(3),NOW(3))
      ON DUPLICATE KEY UPDATE \`title\`=VALUES(\`title\`),\`description\`=VALUES(\`description\`),
        \`content\`=VALUES(\`content\`),\`updatedAt\`=NOW(3)`,
-    [newId(), slug, title, description, JSON.stringify(content)],
+    [newId(), slug, title, description, JSON.stringify(sanitized)],
   );
   revalidatePath(PAGE_META[slug].href);
   revalidatePath("/admin");

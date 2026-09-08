@@ -27,6 +27,7 @@ html,
 body {
   background: var(--color-ink);
   color: var(--color-ivory);
+  overflow-x: hidden;
 }
 
 body {
@@ -226,6 +227,29 @@ body {
   .partners-track {
     gap: 0.85rem;
   }
+
+  .terms-doc h1 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  .terms-doc p,
+  .terms-doc li {
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+
+  .gold-btn {
+    padding: 0.75rem 1.35rem;
+    font-size: 0.9rem;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .ticker-track > span {
+    margin-left: 1rem;
+    margin-right: 1rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -269,4 +293,36 @@ body {
 
 .terms-doc section + section {
   margin-top: 2.5rem;
+}
+
+.rich-text p + p {
+  margin-top: 0.75rem;
+}
+
+.rich-text ul,
+.rich-text ol {
+  margin-top: 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.rich-text ul {
+  list-style: disc;
+}
+
+.rich-text ol {
+  list-style: decimal;
+}
+
+.rich-text li + li {
+  margin-top: 0.35rem;
+}
+
+.rich-text a {
+  color: var(--color-gold);
+  text-decoration: underline;
+}
+
+.rich-text strong,
+.rich-text b {
+  font-weight: 600;
 }
