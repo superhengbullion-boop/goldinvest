@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { ContactForm } from "@/components/ContactForm";
-import { MapEmbed } from "@/components/MapEmbed";
+import { ContactMapSection } from "@/components/ContactMapSection";
 import { RichText } from "@/components/RichText";
+import { resolveContactLocations } from "@/lib/contact-locations";
 import { getContact } from "@/lib/data";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -11,6 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ContactPage() {
   const { content } = await getContact();
+  const locations = resolveContactLocations(content);
 
   return (
     <div className="mx-[10%] py-12 max-md:mx-[5%] max-md:py-8">
@@ -42,7 +44,7 @@ export default async function ContactPage() {
       </div>
       <div className="mt-8">
         <h2 className="mb-4 font-display text-[1.4rem] text-gold max-md:text-xl">Find us</h2>
-        <MapEmbed url={content.mapEmbedUrl} />
+        <ContactMapSection locations={locations} />
       </div>
     </div>
   );

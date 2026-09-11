@@ -104,8 +104,14 @@ function revalidateRates() {
 
 export async function fetchRatesNow() {
   await requireAdmin();
-  const { refreshMetalQuotes } = await import("@/lib/goldapi");
-  await refreshMetalQuotes("manual");
+  const [{ refreshElizQuotes }, { refreshMetalQuotes }] = await Promise.all([
+    import("@/lib/eliz-sync"),
+    import("@/lib/goldapi"),
+  ]);
+  await Promise.allSettled([
+    refreshElizQuotes("manual"),
+    refreshMetalQuotes("manual"),
+  ]);
   revalidateRates();
 }
 

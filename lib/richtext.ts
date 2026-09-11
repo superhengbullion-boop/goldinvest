@@ -1,6 +1,6 @@
 import DOMPurify from "isomorphic-dompurify";
 import { PAGE_FIELDS } from "@/lib/cms";
-import { normalizeMapEmbedUrl } from "@/lib/map-embed";
+import { sanitizeContactLocations } from "@/lib/contact-locations";
 import type { PageField, PageSlug } from "@/lib/types";
 
 const ALLOWED_TAGS = ["p", "br", "strong", "b", "em", "i", "ul", "ol", "li", "a"];
@@ -66,9 +66,9 @@ export function sanitizePageContent(
   if (slug === "terms") {
     delete out.sections;
   }
-  if (slug === "contact" && typeof out.mapEmbedUrl === "string") {
-    const safe = normalizeMapEmbedUrl(out.mapEmbedUrl);
-    out.mapEmbedUrl = safe ?? "";
+  if (slug === "contact") {
+    out.locations = sanitizeContactLocations(out.locations);
+    delete out.mapEmbedUrl;
   }
   return out;
 }

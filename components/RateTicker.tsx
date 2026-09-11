@@ -1,4 +1,4 @@
-import { formatPrice } from "@/lib/data";
+import { formatPrice } from "@/lib/format-price";
 
 type Rate = {
   metal: string;

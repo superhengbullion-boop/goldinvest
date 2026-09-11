@@ -80,6 +80,12 @@ export type RatesPageContent = {
   passwordHelp: string;
 };
 
+export type ContactLocation = {
+  name: string;
+  address?: string;
+  mapEmbedUrl: string;
+};
+
 export type ContactContent = {
   title: string;
   intro: string;
@@ -88,6 +94,8 @@ export type ContactContent = {
   email: string;
   address: string;
   hours: string;
+  locations?: ContactLocation[];
+  /** Legacy single-map field — migrated to `locations`. */
   mapEmbedUrl?: string;
 };
 

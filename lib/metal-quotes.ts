@@ -1,3 +1,5 @@
+import type { ElizMarketSnapshot } from "@/lib/eliz-market";
+
 export type QuoteLike = {
   metal: string;
   currency: string;
@@ -28,7 +30,7 @@ export function metalLabel(metal: string) {
   return metal;
 }
 
-function num(value: { toString(): string } | number | null | undefined) {
+function num(value: { toString(): string } | number | string | null | undefined) {
   if (value == null) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
@@ -61,12 +63,12 @@ function fxRow(usd: QuoteLike, myr: QuoteLike): BoardRow | null {
 }
 
 export const BOARD_UNITS = [
-  { key: "usd-oz", label: "USD/oz" },
-  { key: "myr-kg", label: "MYR/kg" },
-  { key: "myr-tael", label: "MYR/tael" },
-  { key: "myr-g", label: "MYR/g" },
+  { key: "usd-oz", label: "USD/OZ" },
+  { key: "myr-kg", label: "MYR/KG" },
   { key: "usd-myr", label: "USD/MYR" },
 ] as const;
+
+export const ELIZ_CURRENCY = "ELIZ";
 
 export const RATE_METALS = [
   { key: "XAU", label: "Gold" },
@@ -125,6 +127,78 @@ export function adjLookup(adjustments: RateAdj[], metal: string, unitKey: string
   };
 }
 
+function parseElizSnapshot(raw: unknown): ElizMarketSnapshot | null {
+  if (raw == null) return null;
+  try {
+    const data = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (typeof data !== "object" || data === null) return null;
+    const snapshot = data as ElizMarketSnapshot;
+    if (!snapshot.price?.usd || !snapshot.price?.myr) return null;
+    return snapshot;
+  } catch {
+    return null;
+  }
+}
+
+/** Public rates page rows: USD/OZ, MYR/KG, USD/MYR. */
+export function elizSnapshotToBoardRows(snapshot: ElizMarketSnapshot): BoardRow[] {
+  const rows: BoardRow[] = [];
+
+  const usdBuy = num(snapshot.price?.usd?.buy);
+  const usdSell = num(snapshot.price?.usd?.sell);
+  if (usdBuy != null && usdSell != null) {
+    rows.push({ key: "usd-oz", label: "USD/OZ", buy: usdBuy, sell: usdSell, digits: 2 });
+  }
+
+  const myrBuy = num(snapshot.price?.myr?.buy);
+  const myrSell = num(snapshot.price?.myr?.sell);
+  if (myrBuy != null && myrSell != null) {
+    rows.push({ key: "myr-kg", label: "MYR/KG", buy: myrBuy, sell: myrSell, digits: 0 });
+  }
+
+  const fxBuy = num(snapshot.myrRate?.bidPrice);
+  const fxSell = num(snapshot.myrRate?.askPrice);
+  if (fxBuy != null && fxSell != null) {
+    rows.push({ key: "usd-myr", label: "USD/MYR", buy: fxBuy, sell: fxSell, digits: 4 });
+  }
+
+  return rows;
+}
+
+export function elizSnapshotUpdatedAt(snapshot: ElizMarketSnapshot): Date | null {
+  const raw = snapshot.price?.updatedAt ?? snapshot.myrRate?.updatedAt;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function elizBoardFromQuote(
+  quotes: Array<{ metal: string; currency: string; raw?: unknown; fetchedAt: Date }>,
+  metal: string,
+): { rows: BoardRow[]; updatedAt: Date | null } {
+  const row = quotes.find((quote) => quote.metal === metal && quote.currency === ELIZ_CURRENCY);
+  if (!row) return { rows: [], updatedAt: null };
+  const snapshot = parseElizSnapshot(row.raw);
+  if (!snapshot) return { rows: [], updatedAt: row.fetchedAt };
+  return {
+    rows: elizSnapshotToBoardRows(snapshot),
+    updatedAt: elizSnapshotUpdatedAt(snapshot) ?? row.fetchedAt,
+  };
+}
+
+export function marketBoardForMetal(
+  quotes: Array<QuoteLike & { raw?: unknown; currency: string; metal: string; fetchedAt: Date }>,
+  metal: string,
+): BoardRow[] {
+  const eliz = elizBoardFromQuote(quotes, metal);
+  if (eliz.rows.length > 0) return eliz.rows;
+
+  return metalBoard(
+    quotes.find((quote) => quote.metal === metal && quote.currency === "USD"),
+    quotes.find((quote) => quote.metal === metal && quote.currency === "MYR"),
+  );
+}
+
 export function metalBoard(usd?: QuoteLike | null, myr?: QuoteLike | null): BoardRow[] {
   const rows: BoardRow[] = [];
   if (usd) {
@@ -133,20 +207,38 @@ export function metalBoard(usd?: QuoteLike | null, myr?: QuoteLike | null): Boar
   }
   if (myr) {
     const kg = scale(myr, num(myr.priceKg) ?? (num(myr.priceGram) != null ? num(myr.priceGram)! * 1000 : null));
-    const tael = scale(myr, num(myr.priceTael));
-    const gram = scale(myr, num(myr.priceGram));
-    if (kg) rows.push({ key: "myr-kg", label: "MYR/kg", ...kg, digits: 0 });
-    if (tael) rows.push({ key: "myr-tael", label: "MYR/tael", ...tael, digits: 0 });
-    if (gram) rows.push({ key: "myr-g", label: "MYR/g", ...gram, digits: 2 });
+    if (kg) rows.push({ key: "myr-kg", label: "MYR/KG", ...kg, digits: 0 });
   }
   if (usd && myr) {
     const fx = fxRow(usd, myr);
-    if (fx) rows.push(fx);
+    if (fx) rows.push({ ...fx, label: "USD/MYR" });
   }
   return rows;
 }
 
-export function tickerItems(quotes: QuoteLike[], adjustments: RateAdj[] = []) {
+export function tickerItems(
+  quotes: Array<QuoteLike & { raw?: unknown; currency: string; metal: string; fetchedAt: Date }>,
+  adjustments: RateAdj[] = [],
+) {
+  const hasEliz = quotes.some((quote) => quote.currency === ELIZ_CURRENCY);
+  if (hasEliz) {
+    return RATE_METALS.flatMap(({ key }) => {
+      const { rows } = elizBoardFromQuote(quotes, key);
+      const kg = rows.find((row) => row.key === "myr-kg");
+      if (!kg) return [];
+      const adj = adjLookup(adjustments, key, "myr-kg");
+      return [
+        {
+          metal: metalLabel(key),
+          product: "MYR/KG",
+          buyPrice: Math.max(0, kg.buy + adj.buyDelta),
+          sellPrice: Math.max(0, kg.sell + adj.sellDelta),
+          currency: "MYR",
+        },
+      ];
+    });
+  }
+
   const preferred = quotes.filter((quote) => quote.currency === "MYR");
   const source = preferred.length > 0 ? preferred : quotes;
   return source

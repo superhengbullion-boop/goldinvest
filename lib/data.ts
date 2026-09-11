@@ -244,16 +244,7 @@ export async function getUnreadMessageCount(): Promise<number> {
 
 // ── formatting ────────────────────────────────────────────────────────────────
 
-export function formatPrice(value: { toString(): string } | number | string, fractionDigits = 2) {
-  return Number(value).toLocaleString("en-MY", {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
-  });
-}
-
-export function formatQuotePrice(value: { toString(): string } | number | string, currency = "USD") {
-  return `${currency} ${formatPrice(value)}`;
-}
+export { formatPrice, formatQuotePrice } from "@/lib/format-price";
 
 // re-export db helpers so callers can import from a single place
 export { execute, query, queryOne, newId, isDuplicateKey } from "@/lib/db";

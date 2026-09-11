@@ -1,5 +1,6 @@
 import "server-only";
 import { execute, query, queryOne } from "@/lib/db";
+import { refreshElizQuotes } from "@/lib/eliz-sync";
 import { refreshMetalQuotes } from "@/lib/goldapi";
 import { getZonedNow, RATE_TIMEZONE, scheduleSlotKey } from "@/lib/rate-time";
 
@@ -25,14 +26,21 @@ export async function runScheduledRateRefresh(at = new Date()) {
     if (existing?.ok) return { skipped: true as const };
     const source = `schedule:${match.time}`;
     try {
-      await refreshMetalQuotes(source);
+      const [eliz, gold] = await Promise.allSettled([
+        refreshElizQuotes(source),
+        refreshMetalQuotes(source),
+      ]);
+      if (eliz.status === "rejected" && gold.status === "rejected") {
+        const elizMsg = eliz.reason instanceof Error ? eliz.reason.message : String(eliz.reason);
+        throw new Error(elizMsg);
+      }
       await execute(
         `INSERT INTO \`RateFetchLog\`(\`slotKey\`,\`fetchedAt\`,\`source\`,\`ok\`,\`error\`)
          VALUES(?,NOW(3),?,1,NULL)
          ON DUPLICATE KEY UPDATE \`fetchedAt\`=NOW(3),\`source\`=VALUES(\`source\`),\`ok\`=1,\`error\`=NULL`,
         [slotKey, source],
       );
-      console.log(`[rates] Refreshed GoldAPI quotes for ${slotKey} (${RATE_TIMEZONE})`);
+      console.log(`[rates] Refreshed Eliz + GoldAPI quotes for ${slotKey} (${RATE_TIMEZONE})`);
       return { skipped: false as const, slotKey };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

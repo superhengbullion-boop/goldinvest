@@ -20,7 +20,9 @@ import {
   adjLookup,
   applyAdjustments,
   BOARD_UNITS,
-  metalBoard,
+  elizBoardFromQuote,
+  ELIZ_CURRENCY,
+  marketBoardForMetal,
   metalLabel,
   RATE_METALS,
 } from "@/lib/metal-quotes";
@@ -33,21 +35,18 @@ export default async function AdminRatesPage() {
     getLatestQuoteFetch(),
     getRateBooks(),
   ]);
-  const goldMarket = metalBoard(
-    quotes.find((quote) => quote.metal === "XAU" && quote.currency === "USD"),
-    quotes.find((quote) => quote.metal === "XAU" && quote.currency === "MYR"),
-  );
-  const silverMarket = metalBoard(
-    quotes.find((quote) => quote.metal === "XAG" && quote.currency === "USD"),
-    quotes.find((quote) => quote.metal === "XAG" && quote.currency === "MYR"),
-  );
+  const goldMarket = marketBoardForMetal(quotes, "XAU");
+  const silverMarket = marketBoardForMetal(quotes, "XAG");
+  const goldEliz = elizBoardFromQuote(quotes, "XAU");
+  const silverEliz = elizBoardFromQuote(quotes, "XAG");
+  const elizQuotes = quotes.filter((quote) => quote.currency === ELIZ_CURRENCY);
 
   return (
     <div>
       <h1 className="font-display text-4xl text-gold">Rates Setting</h1>
       <p className="mt-2 mb-8 max-w-2xl text-mist">
-        Market quotes come from GoldAPI. Create price books with add/subtract offsets,
-        then assign a book to each member. Logged-in members see only their book.
+        Market quotes come from Eliz (live + stored snapshots) and GoldAPI (legacy backup).
+        Create price books with add/subtract offsets, then assign a book to each member.
       </p>
 
       <section className="mb-10 rounded-xl border border-gold/25 p-6">
@@ -64,7 +63,7 @@ export default async function AdminRatesPage() {
         </div>
 
         {quotes.length === 0 ? (
-          <p className="mt-6 text-mist">No GoldAPI snapshots in the database yet.</p>
+          <p className="mt-6 text-mist">No market snapshots in the database yet.</p>
         ) : (
           <>
             <div className="mt-6 grid grid-cols-2 gap-8 max-md:grid-cols-1">
@@ -72,7 +71,7 @@ export default async function AdminRatesPage() {
                 <MetalRateTable
                   metal="Gold"
                   rows={goldMarket}
-                  updatedAt={quotes.find((quote) => quote.metal === "XAU")?.fetchedAt ?? null}
+                  updatedAt={goldEliz.updatedAt}
                   tone="gold"
                 />
               ) : null}
@@ -80,19 +79,34 @@ export default async function AdminRatesPage() {
                 <MetalRateTable
                   metal="Silver"
                   rows={silverMarket}
-                  updatedAt={quotes.find((quote) => quote.metal === "XAG")?.fetchedAt ?? null}
+                  updatedAt={silverEliz.updatedAt}
                   tone="silver"
                 />
               ) : null}
             </div>
-            <ul className="mt-6 space-y-1 text-sm text-mist">
-              {quotes.map((quote) => (
-                <li key={quote.id}>
-                  {metalLabel(quote.metal)} {quote.currency} · {quote.symbol} ·{" "}
-                  {formatQuotePrice(quote.price, quote.currency)} / oz
-                </li>
-              ))}
-            </ul>
+            {elizQuotes.length > 0 ? (
+              <ul className="mt-6 space-y-1 text-sm text-mist">
+                {elizQuotes.map((quote) => (
+                  <li key={quote.id}>
+                    {metalLabel(quote.metal)} Eliz · updated {formatInZone(quote.fetchedAt)} ·{" "}
+                    {quote.source}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <details className="mt-4 text-sm text-mist">
+              <summary className="cursor-pointer text-gold">GoldAPI backup rows</summary>
+              <ul className="mt-2 space-y-1">
+                {quotes
+                  .filter((quote) => quote.currency !== ELIZ_CURRENCY)
+                  .map((quote) => (
+                    <li key={quote.id}>
+                      {metalLabel(quote.metal)} {quote.currency} · {quote.symbol} ·{" "}
+                      {formatQuotePrice(quote.price, quote.currency)} / oz
+                    </li>
+                  ))}
+              </ul>
+            </details>
           </>
         )}
       </section>
@@ -234,7 +248,7 @@ export default async function AdminRatesPage() {
         <h2 className="font-display text-xl">Refresh times</h2>
         <p className="mt-1 mb-6 text-sm text-mist">
           The API is called only at these clock times each day, in {RATE_TIMEZONE}.
-          Each run fetches gold and silver in USD and MYR.
+          Each run fetches Eliz snapshots and GoldAPI quotes for gold and silver.
         </p>
 
         <form action={addRefreshTime} className="mb-6 flex flex-wrap items-end gap-3">

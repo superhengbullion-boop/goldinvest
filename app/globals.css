@@ -326,3 +326,16 @@ body {
 .rich-text b {
   font-weight: 600;
 }
+
+@keyframes rate-flash {
+  from {
+    color: var(--color-gold);
+  }
+  to {
+    color: inherit;
+  }
+}
+
+.rate-flash {
+  animation: rate-flash 0.7s ease-out;
+}

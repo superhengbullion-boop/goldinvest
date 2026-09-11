@@ -102,10 +102,18 @@ export const PAGE_FIELDS: Record<PageSlug, PageField[]> = {
     { name: "address", label: "Address", type: "textarea" },
     { name: "hours", label: "Operating hours", type: "text" },
     {
-      name: "mapEmbedUrl",
-      label: "Google Map embed",
-      type: "textarea",
-      hint: "Paste the embed URL from Google Maps (Share → Embed a map), or the full iframe code.",
+      name: "locations",
+      label: "Office locations",
+      type: "list",
+      itemFields: [
+        { name: "name", label: "Location name", type: "text" },
+        { name: "address", label: "Address (shown above map)", type: "textarea" },
+        {
+          name: "mapEmbedUrl",
+          label: "Google Map embed URL or iframe code",
+          type: "textarea",
+        },
+      ],
     },
   ],
 };

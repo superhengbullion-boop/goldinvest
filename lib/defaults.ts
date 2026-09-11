@@ -1,3 +1,4 @@
+import { DEFAULT_MAP_EMBED_URL } from "@/lib/map-embed";
 import type {
   AboutContent,
   ContactContent,
@@ -300,8 +301,6 @@ export const DEFAULT_RATES_PAGE: RatesPageContent = {
   passwordHelp: "If you are not able to log in, please contact us at",
 };
 
-import { DEFAULT_MAP_EMBED_URL } from "@/lib/map-embed";
-
 export const DEFAULT_CONTACT: ContactContent = {
   title: "Contact Us",
   intro: "Submit a query, or contact us directly.",
@@ -310,7 +309,13 @@ export const DEFAULT_CONTACT: ContactContent = {
   email: "info@superhengbullion.com",
   address: "No 7, Jalan PPU 2A,\nTaman Perindustrian Puchong Utama,\n47100 Puchong, Selangor.",
   hours: "Office Operating Hours: 9.00am - 6.00pm (Monday - Friday)",
-  mapEmbedUrl: DEFAULT_MAP_EMBED_URL,
+  locations: [
+    {
+      name: "Puchong Office",
+      address: "No 7, Jalan PPU 2A,\nTaman Perindustrian Puchong Utama,\n47100 Puchong, Selangor.",
+      mapEmbedUrl: DEFAULT_MAP_EMBED_URL,
+    },
+  ],
 };
 
 export const DEFAULT_PAGES = [

@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { refreshElizQuotes } from "@/lib/eliz-sync";
 import { runScheduledRateRefresh } from "@/lib/rate-scheduler";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +22,31 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await runScheduledRateRefresh();
-    return Response.json({ ok: true, ...result });
+    const [eliz, schedule] = await Promise.allSettled([
+      refreshElizQuotes("cron"),
+      runScheduledRateRefresh(),
+    ]);
+    const elizError =
+      eliz.status === "rejected"
+        ? eliz.reason instanceof Error
+          ? eliz.reason.message
+          : String(eliz.reason)
+        : null;
+    const scheduleError =
+      schedule.status === "rejected"
+        ? schedule.reason instanceof Error
+          ? schedule.reason.message
+          : String(schedule.reason)
+        : null;
+
+    if (elizError && scheduleError) {
+      throw new Error(elizError || scheduleError || "Rate refresh failed");
+    }
+
+    const elizResult = eliz.status === "fulfilled" ? eliz.value : { error: elizError };
+    const scheduleResult = schedule.status === "fulfilled" ? schedule.value : { error: scheduleError };
+
+    return Response.json({ ok: true, eliz: elizResult, schedule: scheduleResult });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[cron/rates] failed:", message);

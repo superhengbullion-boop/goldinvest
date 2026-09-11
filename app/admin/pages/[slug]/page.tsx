@@ -2,6 +2,7 @@ import {notFound} from 'next/navigation';
 import {PageEditor} from '@/components/admin/PageEditor';
 import {isPageSlug, PAGE_FIELDS, PAGE_META} from '@/lib/cms';
 import { getPageBySlug } from '@/lib/data';
+import { normalizeContactForEditor } from '@/lib/contact-locations';
 import { normalizeTermsForEditor } from '@/lib/terms-html';
 
 export default async function EditPage({
@@ -30,7 +31,9 @@ export default async function EditPage({
 				content={
 					slug === 'terms'
 						? normalizeTermsForEditor(page.content as Record<string, unknown>)
-						: (page.content as Record<string, unknown>)
+						: slug === 'contact'
+							? normalizeContactForEditor(page.content as Record<string, unknown>)
+							: (page.content as Record<string, unknown>)
 				}
 				fields={PAGE_FIELDS[slug]}
 			/>
