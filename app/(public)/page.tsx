@@ -5,13 +5,10 @@ import { ProductIcon } from "@/components/ProductIcon";
 import { RichText } from "@/components/RichText";
 import { TrustedPartners } from "@/components/TrustedPartners";
 import { getContact, getHome } from "@/lib/data";
+import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await getHome();
-  return {
-    title: page.title,
-    description: page.description ?? undefined,
-  };
+  return pageMetadata(await getHome());
 }
 
 export default async function HomePage() {

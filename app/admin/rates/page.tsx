@@ -3,15 +3,18 @@ import {
   createRateBook,
   deleteRateBook,
   deleteRefreshTime,
+  saveManualFxRates,
   saveRateBookAdjustments,
   toggleRateBook,
 } from "@/app/actions/admin";
 import { FetchNowButton } from "@/components/admin/FetchNowButton";
+import { SaveFeedbackForm, SaveFeedbackSubmit } from "@/components/admin/SaveFeedbackForm";
 import { MetalRateTable } from "@/components/MetalRateTable";
 import {
   formatPrice,
   formatQuotePrice,
   getLatestQuoteFetch,
+  getManualFxRates,
   getMetalQuotes,
   getRateBooks,
   getRateRefreshTimes,
@@ -29,25 +32,74 @@ import {
 import { formatInZone, RATE_TIMEZONE } from "@/lib/rate-time";
 
 export default async function AdminRatesPage() {
-  const [quotes, times, latest, books] = await Promise.all([
+  const [quotes, times, latest, books, manualFx] = await Promise.all([
     getMetalQuotes(),
     getRateRefreshTimes(),
     getLatestQuoteFetch(),
     getRateBooks(),
+    getManualFxRates(),
   ]);
-  const goldMarket = marketBoardForMetal(quotes, "XAU");
-  const silverMarket = marketBoardForMetal(quotes, "XAG");
-  const goldEliz = elizBoardFromQuote(quotes, "XAU");
-  const silverEliz = elizBoardFromQuote(quotes, "XAG");
+  const goldMarket = marketBoardForMetal(quotes, "XAU", manualFx);
+  const silverMarket = marketBoardForMetal(quotes, "XAG", manualFx);
+  const goldEliz = elizBoardFromQuote(quotes, "XAU", manualFx);
+  const silverEliz = elizBoardFromQuote(quotes, "XAG", manualFx);
   const elizQuotes = quotes.filter((quote) => quote.currency === ELIZ_CURRENCY);
 
   return (
     <div>
       <h1 className="font-display text-4xl text-gold">Rates Setting</h1>
       <p className="mt-2 mb-8 max-w-2xl text-mist">
-        Market quotes come from Eliz (live + stored snapshots) and GoldAPI (legacy backup).
+        Live market rows come from Eliz. IDR/MYR is set manually below for Gold and Silver.
         Create price books with add/subtract offsets, then assign a book to each member.
       </p>
+
+      <section className="mb-10 rounded-xl border border-gold/25 p-6">
+        <h2 className="font-display text-xl">Manual IDR/MYR</h2>
+        <p className="mt-1 mb-6 text-sm text-mist">
+          Not from the API. These base prices appear on the rates board for each metal.
+          Rate books can still add or subtract offsets on top.
+        </p>
+        <SaveFeedbackForm
+          action={saveManualFxRates}
+          className="grid grid-cols-2 gap-8 max-md:grid-cols-1"
+          successMessage="IDR/MYR rates saved successfully."
+        >
+          {RATE_METALS.map((metal) => {
+            const side = metal.key === "XAU" ? manualFx.XAU : manualFx.XAG;
+            const prefix = metal.key === "XAU" ? "xau" : "xag";
+            return (
+              <div key={metal.key} className="rounded-lg border border-gold/15 p-4">
+                <p className="mb-4 font-display text-lg text-gold">{metal.label}</p>
+                <div className="flex flex-wrap gap-4">
+                  <label className="text-sm">
+                    <span className="mb-1 block text-mist">Buy</span>
+                    <input
+                      name={`${prefix}_idr_buy`}
+                      type="number"
+                      step="any"
+                      defaultValue={side.buy}
+                      className="w-36 rounded border border-gold/30 bg-ink px-3 py-2"
+                    />
+                  </label>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-mist">Sell</span>
+                    <input
+                      name={`${prefix}_idr_sell`}
+                      type="number"
+                      step="any"
+                      defaultValue={side.sell}
+                      className="w-36 rounded border border-gold/30 bg-ink px-3 py-2"
+                    />
+                  </label>
+                </div>
+              </div>
+            );
+          })}
+          <div className="col-span-2 flex flex-wrap items-center gap-4 max-md:col-span-1">
+            <SaveFeedbackSubmit label="Save IDR/MYR" />
+          </div>
+        </SaveFeedbackForm>
+      </section>
 
       <section className="mb-10 rounded-xl border border-gold/25 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -118,17 +170,20 @@ export default async function AdminRatesPage() {
           book to a member under Members so they see that price list after login.
         </p>
 
-        <form action={createRateBook} className="mb-8 flex flex-wrap items-end gap-3">
+        <SaveFeedbackForm
+          action={createRateBook}
+          className="mb-8 flex flex-wrap items-end gap-3"
+          successMessage="Price book created successfully."
+          feedbackClassName="w-full text-sm"
+        >
           <input
             name="name"
             required
             placeholder="Name (e.g. Book A)"
             className="rounded border border-gold/30 bg-ink px-3 py-2"
           />
-          <button type="submit" className="gold-btn py-2">
-            Add price book
-          </button>
-        </form>
+          <SaveFeedbackSubmit label="Add price book" />
+        </SaveFeedbackForm>
 
         {books.length === 0 ? (
           <p className="text-mist">No price books yet. Add one, then assign it to members.</p>
@@ -144,22 +199,38 @@ export default async function AdminRatesPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    <form action={toggleRateBook}>
+                    <SaveFeedbackForm
+                      action={toggleRateBook}
+                      successMessage={book.isActive ? "Book disabled." : "Book enabled."}
+                      feedbackClassName="text-xs"
+                    >
                       <input type="hidden" name="id" value={book.id} />
-                      <button type="submit" className="text-sm text-gold">
-                        {book.isActive ? "Disable" : "Enable"}
-                      </button>
-                    </form>
-                    <form action={deleteRateBook}>
+                      <SaveFeedbackSubmit
+                        label={book.isActive ? "Disable" : "Enable"}
+                        pendingLabel="Updating…"
+                        className="text-sm text-gold disabled:opacity-60"
+                      />
+                    </SaveFeedbackForm>
+                    <SaveFeedbackForm
+                      action={deleteRateBook}
+                      successMessage=""
+                      feedbackClassName="text-xs"
+                    >
                       <input type="hidden" name="id" value={book.id} />
-                      <button type="submit" className="text-sm text-red-400">
-                        Delete
-                      </button>
-                    </form>
+                      <SaveFeedbackSubmit
+                        label="Delete"
+                        pendingLabel="Deleting…"
+                        className="text-sm text-red-400 disabled:opacity-60"
+                      />
+                    </SaveFeedbackForm>
                   </div>
                 </div>
 
-                <form action={saveRateBookAdjustments} className="space-y-8">
+                <SaveFeedbackForm
+                  action={saveRateBookAdjustments}
+                  className="space-y-8"
+                  successMessage="Price book offsets saved successfully."
+                >
                   <input type="hidden" name="id" value={book.id} />
                   <label className="block max-w-sm text-sm">
                     <span className="mb-1 block text-mist">Display name</span>
@@ -197,9 +268,14 @@ export default async function AdminRatesPage() {
                                   <tr key={unit.key} className="border-t border-gold/15">
                                     <td className="py-2 pr-3">{unit.label}</td>
                                     <td className="py-2 pr-3 text-mist">
-                                      {marketRow
-                                        ? `${formatPrice(marketRow.buy, digits)} / ${formatPrice(marketRow.sell, digits)}`
-                                        : "—"}
+                                      {unit.source === "manual"
+                                        ? "Manual"
+                                        : marketRow
+                                          ? `${formatPrice(marketRow.buy, digits)} / ${formatPrice(marketRow.sell, digits)}`
+                                          : "—"}
+                                      {unit.source === "manual" && marketRow
+                                        ? ` · ${formatPrice(marketRow.buy, digits)} / ${formatPrice(marketRow.sell, digits)}`
+                                        : ""}
                                     </td>
                                     <td className="py-2 pr-3">
                                       <input
@@ -234,10 +310,10 @@ export default async function AdminRatesPage() {
                     );
                   })}
 
-                  <button type="submit" className="gold-btn py-2">
-                    Save offsets
-                  </button>
-                </form>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <SaveFeedbackSubmit label="Save offsets" />
+                  </div>
+                </SaveFeedbackForm>
               </article>
             ))}
           </div>
@@ -251,7 +327,12 @@ export default async function AdminRatesPage() {
           Each run fetches Eliz snapshots and GoldAPI quotes for gold and silver.
         </p>
 
-        <form action={addRefreshTime} className="mb-6 flex flex-wrap items-end gap-3">
+        <SaveFeedbackForm
+          action={addRefreshTime}
+          className="mb-6 flex flex-wrap items-end gap-3"
+          successMessage="Refresh time saved successfully."
+          feedbackClassName="w-full text-sm"
+        >
           <label className="text-sm">
             <span className="mb-1 block text-mist">Add time</span>
             <input
@@ -261,10 +342,8 @@ export default async function AdminRatesPage() {
               className="rounded border border-gold/30 bg-ink px-3 py-2"
             />
           </label>
-          <button type="submit" className="gold-btn py-2">
-            Save time
-          </button>
-        </form>
+          <SaveFeedbackSubmit label="Save time" />
+        </SaveFeedbackForm>
 
         {times.length === 0 ? (
           <p className="text-mist">No refresh times set. Quotes will not update until you add one or click Fetch now.</p>
@@ -273,12 +352,18 @@ export default async function AdminRatesPage() {
             {times.map((slot) => (
               <li key={slot.id} className="flex items-center justify-between px-4 py-3">
                 <span className="font-display text-lg tracking-wide">{slot.time}</span>
-                <form action={deleteRefreshTime}>
+                <SaveFeedbackForm
+                  action={deleteRefreshTime}
+                  successMessage=""
+                  feedbackClassName="text-xs"
+                >
                   <input type="hidden" name="id" value={slot.id} />
-                  <button type="submit" className="text-sm text-red-400">
-                    Remove
-                  </button>
-                </form>
+                  <SaveFeedbackSubmit
+                    label="Remove"
+                    pendingLabel="Removing…"
+                    className="text-sm text-red-400 disabled:opacity-60"
+                  />
+                </SaveFeedbackForm>
               </li>
             ))}
           </ul>

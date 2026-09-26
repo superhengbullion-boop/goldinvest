@@ -7,6 +7,7 @@ import { PAGE_META } from "@/lib/cms";
 
 const LINKS = [
   { href: "/admin", label: "Dashboard" },
+  { href: "/admin/settings", label: "Site settings" },
   ...Object.entries(PAGE_META).map(([slug, meta]) => ({
     href: `/admin/pages/${slug}`,
     label: meta.cmsLabel,

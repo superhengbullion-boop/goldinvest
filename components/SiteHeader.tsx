@@ -9,8 +9,12 @@ import { NAV_LINKS } from "@/lib/cms";
 
 export function SiteHeader({
   accountName,
+  logo,
+  siteName,
 }: {
   accountName?: string | null;
+  logo?: string;
+  siteName?: string;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -21,7 +25,7 @@ export function SiteHeader({
   return (
     <header className="relative z-40">
       <div className="flex items-center justify-between px-[5%] py-4 lg:hidden">
-        <Logo />
+        <Logo src={logo} name={siteName} />
         <button
           type="button"
           aria-label="Open menu"
@@ -71,7 +75,7 @@ export function SiteHeader({
       ) : null}
 
       <div className="hidden items-center px-[5%] py-4 lg:flex">
-        <Logo className="shrink-0" />
+        <Logo className="shrink-0" src={logo} name={siteName} />
         <nav className="flex min-w-0 flex-1 items-center justify-center gap-10 uppercase tracking-wide">
           {NAV_LINKS.map((link) => (
             <Link

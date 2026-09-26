@@ -1,4 +1,5 @@
 import { buildMarketResponse, getElizSnapshots } from "@/lib/market-api";
+import { getManualFxRates } from "@/lib/data";
 import { getMember } from "@/lib/member-session";
 import type { RateAdj } from "@/lib/metal-quotes";
 
@@ -22,11 +23,15 @@ function serializeAdjustments(
 
 export async function GET() {
   try {
-    const [member, snapshots] = await Promise.all([getMember(), getElizSnapshots()]);
+    const [member, snapshots, manualFx] = await Promise.all([
+      getMember(),
+      getElizSnapshots(),
+      getManualFxRates(),
+    ]);
     const book = member?.rateBook?.isActive ? member.rateBook : null;
     const adjustments = book ? serializeAdjustments(book.adjustments) : [];
 
-    return Response.json(buildMarketResponse(snapshots, adjustments, Boolean(book)), {
+    return Response.json(buildMarketResponse(snapshots, adjustments, Boolean(book), manualFx), {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (err) {

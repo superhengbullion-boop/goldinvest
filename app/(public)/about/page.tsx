@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { RichText } from "@/components/RichText";
 import { getAbout } from "@/lib/data";
+import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await getAbout();
-  return { title: page.title, description: page.description ?? undefined };
+  return pageMetadata(await getAbout());
 }
 
 export default async function AboutPage() {

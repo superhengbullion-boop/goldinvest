@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { TermsDocument } from "@/components/TermsDocument";
 import { getTerms } from "@/lib/data";
+import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await getTerms();
-  return { title: page.title, description: page.description ?? undefined };
+  return pageMetadata(await getTerms());
 }
 
 export default async function TermsPage() {

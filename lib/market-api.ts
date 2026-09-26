@@ -8,8 +8,10 @@ import {
 import type { MarketApiResponse, MarketMetalPayload, MarketTickerItem } from "@/lib/market-types";
 import {
   applyAdjustments,
+  DEFAULT_MANUAL_FX,
   elizSnapshotToBoardRows,
   elizSnapshotUpdatedAt,
+  type ManualFxRates,
   type RateAdj,
 } from "@/lib/metal-quotes";
 
@@ -21,10 +23,12 @@ function metalPayload(
   snapshot: ElizMarketSnapshot,
   metal: string,
   adjustments: RateAdj[],
+  manualFx: ManualFxRates,
 ): MarketMetalPayload {
   const updatedAt = elizSnapshotUpdatedAt(snapshot);
+  const manual = metal === "XAG" ? manualFx.XAG : manualFx.XAU;
   return {
-    rows: applyAdjustments(elizSnapshotToBoardRows(snapshot), metal, adjustments),
+    rows: applyAdjustments(elizSnapshotToBoardRows(snapshot, manual), metal, adjustments),
     updatedAt: updatedAt?.toISOString() ?? null,
   };
 }
@@ -49,11 +53,12 @@ function buildResponse(
   snapshots: { xau: ElizMarketSnapshot; xag: ElizMarketSnapshot },
   adjustments: RateAdj[],
   assigned: boolean,
+  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
 ): MarketApiResponse {
   const goldAdj = adjustments.filter((item) => item.metal === "XAU");
   const silverAdj = adjustments.filter((item) => item.metal === "XAG");
-  const gold = metalPayload(snapshots.xau, "XAU", goldAdj);
-  const silver = metalPayload(snapshots.xag, "XAG", silverAdj);
+  const gold = metalPayload(snapshots.xau, "XAU", goldAdj, manualFx);
+  const silver = metalPayload(snapshots.xag, "XAG", silverAdj, manualFx);
 
   const ticker = assigned
     ? ([
@@ -84,15 +89,17 @@ export function buildMarketResponse(
   snapshots: ElizSnapshots,
   adjustments: RateAdj[] = [],
   assigned = true,
+  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
 ): MarketApiResponse {
-  return buildResponse(snapshots, adjustments, assigned);
+  return buildResponse(snapshots, adjustments, assigned, manualFx);
 }
 
 export async function getLiveMarket(
   _source: string,
   adjustments: RateAdj[] = [],
   assigned = true,
+  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
 ): Promise<MarketApiResponse> {
   const snapshots = await getElizSnapshots();
-  return buildMarketResponse(snapshots, adjustments, assigned);
+  return buildMarketResponse(snapshots, adjustments, assigned, manualFx);
 }

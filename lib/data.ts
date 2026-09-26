@@ -4,6 +4,17 @@ import { startRateScheduler } from "@/lib/rate-scheduler";
 import {
   DEFAULT_ABOUT, DEFAULT_CONTACT, DEFAULT_HOME, DEFAULT_RATES_PAGE, DEFAULT_TERMS,
 } from "@/lib/defaults";
+import {
+  DEFAULT_MANUAL_FX,
+  MANUAL_RATES_SLUG,
+  normalizeManualFx,
+  type ManualFxRates,
+} from "@/lib/metal-quotes";
+import {
+  DEFAULT_SITE_SETTINGS,
+  SITE_SETTINGS_SLUG,
+  type SiteSettings,
+} from "@/lib/seo";
 import type {
   AboutContent, ContactContent, HomeContent, PageSlug, RatesPageContent, TermsContent,
 } from "@/lib/types";
@@ -97,6 +108,41 @@ export async function getPageBySlug(slug: string) {
     "SELECT * FROM `Page` WHERE `slug`=? LIMIT 1", [slug],
   );
   return row ? { ...row, content: asJson(row.content, {}) } : null;
+}
+
+export async function getSiteSettings(): Promise<SiteSettings> {
+  try {
+    const row = await queryOne<PageRow>(
+      "SELECT `title`,`description`,`content` FROM `Page` WHERE `slug`=? LIMIT 1",
+      [SITE_SETTINGS_SLUG],
+    );
+    if (!row) return DEFAULT_SITE_SETTINGS;
+    const content = asJson<Partial<SiteSettings>>(row.content, {});
+    return {
+      siteName: content.siteName?.trim() || DEFAULT_SITE_SETTINGS.siteName,
+      logo: content.logo?.trim() || DEFAULT_SITE_SETTINGS.logo,
+      title: row.title?.trim() || DEFAULT_SITE_SETTINGS.title,
+      description: row.description?.trim() || DEFAULT_SITE_SETTINGS.description,
+      keywords: content.keywords?.trim() || "",
+    };
+  } catch (err) {
+    console.error("[cms] getSiteSettings failed, using fallback:", err);
+    return DEFAULT_SITE_SETTINGS;
+  }
+}
+
+export async function getManualFxRates(): Promise<ManualFxRates> {
+  try {
+    const row = await queryOne<PageRow>(
+      "SELECT `content` FROM `Page` WHERE `slug`=? LIMIT 1",
+      [MANUAL_RATES_SLUG],
+    );
+    if (!row) return DEFAULT_MANUAL_FX;
+    return normalizeManualFx(asJson(row.content, {}));
+  } catch (err) {
+    console.error("[cms] getManualFxRates failed, using fallback:", err);
+    return DEFAULT_MANUAL_FX;
+  }
 }
 
 // ── rates ─────────────────────────────────────────────────────────────────────

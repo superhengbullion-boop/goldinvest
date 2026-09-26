@@ -3,9 +3,10 @@ import { LiveRatesBoard } from "@/components/LiveRatesBoard";
 import { RichText } from "@/components/RichText";
 import { getRatesPage } from "@/lib/data";
 import { getMember } from "@/lib/member-session";
+import { pageMetadata } from "@/lib/seo";
+
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await getRatesPage();
-  return { title: page.title, description: page.description ?? undefined };
+  return pageMetadata(await getRatesPage());
 }
 
 export default async function RatesPage() {

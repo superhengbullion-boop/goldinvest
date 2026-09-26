@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { updatePage } from "@/app/actions/admin";
 import { ImageField } from "@/components/admin/ImageField";
 import { RichTextField } from "@/components/admin/RichTextField";
+import { SaveFeedbackForm, SaveFeedbackSubmit } from "@/components/admin/SaveFeedbackForm";
+import { keywordsFromContent } from "@/lib/seo";
 import type { PageField } from "@/lib/types";
 
 type Props = {
@@ -21,46 +23,68 @@ function emptyItem(fields: { name: string }[]) {
 export function PageEditor({ slug, title, description, content, fields }: Props) {
   const [pageTitle, setPageTitle] = useState(title);
   const [pageDescription, setPageDescription] = useState(description);
-  const [values, setValues] = useState<Record<string, unknown>>(content);
-  const [saved, setSaved] = useState(false);
+  const [seoKeywords, setSeoKeywords] = useState(keywordsFromContent(content));
+  const [values, setValues] = useState<Record<string, unknown>>({
+    ...content,
+    seoKeywords: keywordsFromContent(content),
+  });
 
   const payload = useMemo(() => JSON.stringify(values), [values]);
+  const statusKey = `${pageTitle}|${pageDescription}|${seoKeywords}|${payload}`;
 
   function setField(name: string, value: unknown) {
     setValues((prev) => ({ ...prev, [name]: value }));
-    setSaved(false);
   }
 
   return (
-    <form
-      action={async (formData) => {
-        await updatePage(formData);
-        setSaved(true);
-      }}
+    <SaveFeedbackForm
+      action={updatePage}
       className="space-y-8"
+      successMessage="Page saved successfully."
+      statusKey={statusKey}
     >
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="content" value={payload} />
 
-      <label className="block">
-        <span className="mb-2 block text-sm text-mist">Page title (SEO)</span>
-        <input
-          name="title"
-          value={pageTitle}
-          onChange={(e) => setPageTitle(e.target.value)}
-          className="w-full rounded-lg border border-gold/30 bg-ink px-4 py-3 outline-none focus:border-gold"
-        />
-      </label>
-      <label className="block">
-        <span className="mb-2 block text-sm text-mist">Meta description</span>
-        <textarea
-          name="description"
-          value={pageDescription}
-          onChange={(e) => setPageDescription(e.target.value)}
-          rows={2}
-          className="w-full rounded-lg border border-gold/30 bg-ink px-4 py-3 outline-none focus:border-gold"
-        />
-      </label>
+      <fieldset className="space-y-6 rounded-xl border border-gold/20 p-5">
+        <legend className="px-2 text-gold">SEO</legend>
+        <label className="block">
+          <span className="mb-2 block text-sm text-mist">SEO title</span>
+          <input
+            name="title"
+            value={pageTitle}
+            onChange={(e) => setPageTitle(e.target.value)}
+            className="w-full rounded-lg border border-gold/30 bg-ink px-4 py-3 outline-none focus:border-gold"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm text-mist">SEO description</span>
+          <textarea
+            name="description"
+            value={pageDescription}
+            onChange={(e) => setPageDescription(e.target.value)}
+            rows={4}
+            className="w-full rounded-lg border border-gold/30 bg-ink px-4 py-3 outline-none focus:border-gold"
+          />
+          <p className="mt-2 text-xs text-mist">Shown in search results for this page.</p>
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm text-mist">SEO keywords</span>
+          <textarea
+            value={seoKeywords}
+            onChange={(e) => {
+              setSeoKeywords(e.target.value);
+              setField("seoKeywords", e.target.value);
+            }}
+            rows={3}
+            placeholder="buy gold Malaysia, gold price, bullion"
+            className="w-full rounded-lg border border-gold/30 bg-ink px-4 py-3 outline-none focus:border-gold"
+          />
+          <p className="mt-2 text-xs text-mist">
+            Comma-separated search queries for this page.
+          </p>
+        </label>
+      </fieldset>
 
       {fields.map((field) => {
         if (field.type === "list") {
@@ -193,11 +217,8 @@ export function PageEditor({ slug, title, description, content, fields }: Props)
       })}
 
       <div className="flex items-center gap-4">
-        <button type="submit" className="gold-btn">
-          Save page
-        </button>
-        {saved ? <span className="text-sm text-gold">Saved</span> : null}
+        <SaveFeedbackSubmit label="Save page" className="gold-btn" />
       </div>
-    </form>
+    </SaveFeedbackForm>
   );
 }

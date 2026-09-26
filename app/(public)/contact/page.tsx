@@ -4,10 +4,11 @@ import { ContactMapSection } from "@/components/ContactMapSection";
 import { RichText } from "@/components/RichText";
 import { resolveContactLocations } from "@/lib/contact-locations";
 import { getContact } from "@/lib/data";
+import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const page = await getContact();
-  return { title: page.title, description: page.description ?? undefined };
+  return pageMetadata(page);
 }
 
 export default async function ContactPage() {

@@ -24,6 +24,21 @@ export type BoardRow = {
   digits: number;
 };
 
+export type ManualIdrMyr = {
+  buy: number;
+  sell: number;
+};
+
+export type ManualFxRates = {
+  XAU: ManualIdrMyr;
+  XAG: ManualIdrMyr;
+};
+
+export const DEFAULT_MANUAL_FX: ManualFxRates = {
+  XAU: { buy: 0, sell: 0 },
+  XAG: { buy: 0, sell: 0 },
+};
+
 export function metalLabel(metal: string) {
   if (metal === "XAU") return "Gold";
   if (metal === "XAG") return "Silver";
@@ -62,13 +77,16 @@ function fxRow(usd: QuoteLike, myr: QuoteLike): BoardRow | null {
   };
 }
 
+/** Display order for public rates + admin books. */
 export const BOARD_UNITS = [
-  { key: "usd-oz", label: "USD/OZ" },
-  { key: "myr-kg", label: "MYR/KG" },
-  { key: "usd-myr", label: "USD/MYR" },
+  { key: "myr-kg", label: "MYR/KG", digits: 0, source: "api" },
+  { key: "idr-myr", label: "IDR/MYR", digits: 2, source: "manual" },
+  { key: "usd-myr", label: "USD/MYR", digits: 4, source: "api" },
+  { key: "usd-oz", label: "USD/OZ", digits: 2, source: "api" },
 ] as const;
 
 export const ELIZ_CURRENCY = "ELIZ";
+export const MANUAL_RATES_SLUG = "manual-rates";
 
 export const RATE_METALS = [
   { key: "XAU", label: "Gold" },
@@ -94,6 +112,24 @@ export function defaultAdjustments() {
       sellDelta: 0,
     })),
   );
+}
+
+export function orderBoardRows(rows: BoardRow[]): BoardRow[] {
+  const byKey = new Map(rows.map((row) => [row.key, row]));
+  return BOARD_UNITS.flatMap((unit) => {
+    const row = byKey.get(unit.key);
+    return row ? [row] : [];
+  });
+}
+
+export function idrMyrRow(manual?: ManualIdrMyr | null): BoardRow {
+  return {
+    key: "idr-myr",
+    label: "IDR/MYR",
+    buy: Number(manual?.buy) || 0,
+    sell: Number(manual?.sell) || 0,
+    digits: 2,
+  };
 }
 
 export function applyAdjustments(
@@ -140,15 +176,12 @@ function parseElizSnapshot(raw: unknown): ElizMarketSnapshot | null {
   }
 }
 
-/** Public rates page rows: USD/OZ, MYR/KG, USD/MYR. */
-export function elizSnapshotToBoardRows(snapshot: ElizMarketSnapshot): BoardRow[] {
+/** Public rates page rows in display order, including manual IDR/MYR. */
+export function elizSnapshotToBoardRows(
+  snapshot: ElizMarketSnapshot,
+  manualIdrMyr?: ManualIdrMyr | null,
+): BoardRow[] {
   const rows: BoardRow[] = [];
-
-  const usdBuy = num(snapshot.price?.usd?.buy);
-  const usdSell = num(snapshot.price?.usd?.sell);
-  if (usdBuy != null && usdSell != null) {
-    rows.push({ key: "usd-oz", label: "USD/OZ", buy: usdBuy, sell: usdSell, digits: 2 });
-  }
 
   const myrBuy = num(snapshot.price?.myr?.buy);
   const myrSell = num(snapshot.price?.myr?.sell);
@@ -156,13 +189,21 @@ export function elizSnapshotToBoardRows(snapshot: ElizMarketSnapshot): BoardRow[
     rows.push({ key: "myr-kg", label: "MYR/KG", buy: myrBuy, sell: myrSell, digits: 0 });
   }
 
+  rows.push(idrMyrRow(manualIdrMyr));
+
   const fxBuy = num(snapshot.myrRate?.bidPrice);
   const fxSell = num(snapshot.myrRate?.askPrice);
   if (fxBuy != null && fxSell != null) {
     rows.push({ key: "usd-myr", label: "USD/MYR", buy: fxBuy, sell: fxSell, digits: 4 });
   }
 
-  return rows;
+  const usdBuy = num(snapshot.price?.usd?.buy);
+  const usdSell = num(snapshot.price?.usd?.sell);
+  if (usdBuy != null && usdSell != null) {
+    rows.push({ key: "usd-oz", label: "USD/OZ", buy: usdBuy, sell: usdSell, digits: 2 });
+  }
+
+  return orderBoardRows(rows);
 }
 
 export function elizSnapshotUpdatedAt(snapshot: ElizMarketSnapshot): Date | null {
@@ -175,13 +216,20 @@ export function elizSnapshotUpdatedAt(snapshot: ElizMarketSnapshot): Date | null
 export function elizBoardFromQuote(
   quotes: Array<{ metal: string; currency: string; raw?: unknown; fetchedAt: Date }>,
   metal: string,
+  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
 ): { rows: BoardRow[]; updatedAt: Date | null } {
   const row = quotes.find((quote) => quote.metal === metal && quote.currency === ELIZ_CURRENCY);
-  if (!row) return { rows: [], updatedAt: null };
+  const manual = metal === "XAG" ? manualFx.XAG : manualFx.XAU;
+  if (!row) return { rows: [idrMyrRow(manual)], updatedAt: null };
   const snapshot = parseElizSnapshot(row.raw);
-  if (!snapshot) return { rows: [], updatedAt: row.fetchedAt };
+  if (!snapshot) {
+    return {
+      rows: orderBoardRows([idrMyrRow(manual)]),
+      updatedAt: row.fetchedAt,
+    };
+  }
   return {
-    rows: elizSnapshotToBoardRows(snapshot),
+    rows: elizSnapshotToBoardRows(snapshot, manual),
     updatedAt: elizSnapshotUpdatedAt(snapshot) ?? row.fetchedAt,
   };
 }
@@ -189,41 +237,52 @@ export function elizBoardFromQuote(
 export function marketBoardForMetal(
   quotes: Array<QuoteLike & { raw?: unknown; currency: string; metal: string; fetchedAt: Date }>,
   metal: string,
+  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
 ): BoardRow[] {
-  const eliz = elizBoardFromQuote(quotes, metal);
-  if (eliz.rows.length > 0) return eliz.rows;
+  const eliz = elizBoardFromQuote(quotes, metal, manualFx);
+  if (eliz.rows.some((row) => row.key !== "idr-myr")) return eliz.rows;
 
   return metalBoard(
     quotes.find((quote) => quote.metal === metal && quote.currency === "USD"),
     quotes.find((quote) => quote.metal === metal && quote.currency === "MYR"),
+    metal === "XAG" ? manualFx.XAG : manualFx.XAU,
   );
 }
 
-export function metalBoard(usd?: QuoteLike | null, myr?: QuoteLike | null): BoardRow[] {
+export function metalBoard(
+  usd?: QuoteLike | null,
+  myr?: QuoteLike | null,
+  manualIdrMyr?: ManualIdrMyr | null,
+): BoardRow[] {
   const rows: BoardRow[] = [];
-  if (usd) {
-    const oz = scale(usd, num(usd.price));
-    if (oz) rows.push({ key: "usd-oz", label: "USD/oz", ...oz, digits: 2 });
-  }
   if (myr) {
-    const kg = scale(myr, num(myr.priceKg) ?? (num(myr.priceGram) != null ? num(myr.priceGram)! * 1000 : null));
+    const kg = scale(
+      myr,
+      num(myr.priceKg) ?? (num(myr.priceGram) != null ? num(myr.priceGram)! * 1000 : null),
+    );
     if (kg) rows.push({ key: "myr-kg", label: "MYR/KG", ...kg, digits: 0 });
   }
+  rows.push(idrMyrRow(manualIdrMyr));
   if (usd && myr) {
     const fx = fxRow(usd, myr);
     if (fx) rows.push({ ...fx, label: "USD/MYR" });
   }
-  return rows;
+  if (usd) {
+    const oz = scale(usd, num(usd.price));
+    if (oz) rows.push({ key: "usd-oz", label: "USD/OZ", ...oz, digits: 2 });
+  }
+  return orderBoardRows(rows);
 }
 
 export function tickerItems(
   quotes: Array<QuoteLike & { raw?: unknown; currency: string; metal: string; fetchedAt: Date }>,
   adjustments: RateAdj[] = [],
+  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
 ) {
   const hasEliz = quotes.some((quote) => quote.currency === ELIZ_CURRENCY);
   if (hasEliz) {
     return RATE_METALS.flatMap(({ key }) => {
-      const { rows } = elizBoardFromQuote(quotes, key);
+      const { rows } = elizBoardFromQuote(quotes, key, manualFx);
       const kg = rows.find((row) => row.key === "myr-kg");
       if (!kg) return [];
       const adj = adjLookup(adjustments, key, "myr-kg");
@@ -259,4 +318,18 @@ export function tickerItems(
         },
       ];
     });
+}
+
+export function normalizeManualFx(raw: unknown): ManualFxRates {
+  const content = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  function side(metal: "XAU" | "XAG"): ManualIdrMyr {
+    const block = content[metal];
+    if (!block || typeof block !== "object") return { ...DEFAULT_MANUAL_FX[metal] };
+    const row = block as Record<string, unknown>;
+    return {
+      buy: Number(row.buy) || 0,
+      sell: Number(row.sell) || 0,
+    };
+  }
+  return { XAU: side("XAU"), XAG: side("XAG") };
 }

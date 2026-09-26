@@ -5,6 +5,8 @@ import { asBool, execute, isDuplicateKey, newId, query, queryOne } from "@/lib/d
 import { getSession } from "@/lib/session";
 import { isPageSlug, PAGE_META } from "@/lib/cms";
 import { sanitizePageContent } from "@/lib/richtext";
+import { SITE_SETTINGS_SLUG } from "@/lib/seo";
+import { MANUAL_RATES_SLUG } from "@/lib/metal-quotes";
 import type { RateBookAdjRow } from "@/lib/data";
 
 async function requireAdmin() {
@@ -26,6 +28,9 @@ export async function updatePage(formData: FormData) {
   try { content = JSON.parse(raw); } catch { throw new Error("Invalid content payload"); }
 
   const sanitized = sanitizePageContent(slug, content as Record<string, unknown>);
+  if (typeof sanitized.seoKeywords === "string") {
+    sanitized.seoKeywords = sanitized.seoKeywords.trim();
+  }
 
   await execute(
     `INSERT INTO \`Page\`(\`id\`,\`slug\`,\`title\`,\`description\`,\`content\`,\`createdAt\`,\`updatedAt\`)
@@ -37,6 +42,51 @@ export async function updatePage(formData: FormData) {
   revalidatePath(PAGE_META[slug].href);
   revalidatePath("/admin");
   revalidatePath(`/admin/pages/${slug}`);
+}
+
+export async function updateSiteSettings(formData: FormData) {
+  await requireAdmin();
+  const siteName = String(formData.get("siteName") ?? "").trim();
+  const logo = String(formData.get("logo") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const keywords = String(formData.get("keywords") ?? "").trim();
+  if (!siteName || !title) throw new Error("Site name and SEO title are required.");
+
+  const content = { siteName, logo, keywords };
+  await execute(
+    `INSERT INTO \`Page\`(\`id\`,\`slug\`,\`title\`,\`description\`,\`content\`,\`createdAt\`,\`updatedAt\`)
+     VALUES(?,?,?,?,?,NOW(3),NOW(3))
+     ON DUPLICATE KEY UPDATE \`title\`=VALUES(\`title\`),\`description\`=VALUES(\`description\`),
+       \`content\`=VALUES(\`content\`),\`updatedAt\`=NOW(3)`,
+    [newId(), SITE_SETTINGS_SLUG, title, description, JSON.stringify(content)],
+  );
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/login");
+}
+
+export async function saveManualFxRates(formData: FormData) {
+  await requireAdmin();
+  const content = {
+    XAU: {
+      buy: Number(formData.get("xau_idr_buy") ?? 0) || 0,
+      sell: Number(formData.get("xau_idr_sell") ?? 0) || 0,
+    },
+    XAG: {
+      buy: Number(formData.get("xag_idr_buy") ?? 0) || 0,
+      sell: Number(formData.get("xag_idr_sell") ?? 0) || 0,
+    },
+  };
+  await execute(
+    `INSERT INTO \`Page\`(\`id\`,\`slug\`,\`title\`,\`description\`,\`content\`,\`createdAt\`,\`updatedAt\`)
+     VALUES(?,?,?,?,?,NOW(3),NOW(3))
+     ON DUPLICATE KEY UPDATE \`content\`=VALUES(\`content\`),\`updatedAt\`=NOW(3)`,
+    [newId(), MANUAL_RATES_SLUG, "Manual FX rates", "Admin-controlled IDR/MYR rates", JSON.stringify(content)],
+  );
+  revalidatePath("/admin/rates");
+  revalidatePath("/rates");
+  revalidatePath("/");
 }
 
 // ── rates ─────────────────────────────────────────────────────────────────────
@@ -255,7 +305,6 @@ export async function createMember(formData: FormData) {
 
 export async function updateMember(formData: FormData) {
   await requireAdmin();
-  const { redirect } = await import("next/navigation");
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id) || id < 1) return;
 
@@ -287,7 +336,7 @@ export async function updateMember(formData: FormData) {
     throw e;
   }
   revalidatePath("/admin/members");
-  redirect("/admin/members");
+  revalidatePath(`/admin/members/${id}`);
 }
 
 export async function deleteMember(formData: FormData) {

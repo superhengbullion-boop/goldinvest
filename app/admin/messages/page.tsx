@@ -1,4 +1,5 @@
 import { deleteMessage, markMessageRead } from "@/app/actions/admin";
+import { SaveFeedbackForm, SaveFeedbackSubmit } from "@/components/admin/SaveFeedbackForm";
 import { getMessages } from "@/lib/data";
 
 export default async function MessagesPage() {
@@ -21,21 +22,35 @@ export default async function MessagesPage() {
                   {msg.email} · {msg.phone} · {msg.createdAt.toLocaleString()}
                 </p>
               </div>
-              <div className="flex gap-3">
-                {!msg.read ? (
-                  <form action={markMessageRead}>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex gap-3">
+                  {!msg.read ? (
+                    <SaveFeedbackForm
+                      action={markMessageRead}
+                      successMessage="Marked as read."
+                      feedbackClassName="text-xs"
+                    >
+                      <input type="hidden" name="id" value={msg.id} />
+                      <SaveFeedbackSubmit
+                        label="Mark read"
+                        pendingLabel="Updating…"
+                        className="text-sm text-gold disabled:opacity-60"
+                      />
+                    </SaveFeedbackForm>
+                  ) : null}
+                  <SaveFeedbackForm
+                    action={deleteMessage}
+                    successMessage=""
+                    feedbackClassName="text-xs"
+                  >
                     <input type="hidden" name="id" value={msg.id} />
-                    <button type="submit" className="text-sm text-gold">
-                      Mark read
-                    </button>
-                  </form>
-                ) : null}
-                <form action={deleteMessage}>
-                  <input type="hidden" name="id" value={msg.id} />
-                  <button type="submit" className="text-sm text-red-400">
-                    Delete
-                  </button>
-                </form>
+                    <SaveFeedbackSubmit
+                      label="Delete"
+                      pendingLabel="Deleting…"
+                      className="text-sm text-red-400 disabled:opacity-60"
+                    />
+                  </SaveFeedbackForm>
+                </div>
               </div>
             </div>
             <p className="mt-4 whitespace-pre-wrap text-ivory/90">{msg.message}</p>
