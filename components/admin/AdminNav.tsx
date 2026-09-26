@@ -14,10 +14,17 @@ const LINKS = [
   })),
   { href: "/admin/rates", label: "Rates Setting" },
   { href: "/admin/members", label: "Members" },
+  { href: "/admin/orders", label: "Orders" },
   { href: "/admin/messages", label: "Messages" },
 ];
 
-export function AdminNav({ unreadCount = 0 }: { unreadCount?: number }) {
+export function AdminNav({
+  unreadCount = 0,
+  pendingOrderCount = 0,
+}: {
+  unreadCount?: number;
+  pendingOrderCount?: number;
+}) {
   const current = usePathname();
   return (
     <aside className="flex w-64 flex-col border-r border-gold/20 bg-black px-5 py-8">
@@ -30,7 +37,13 @@ export function AdminNav({ unreadCount = 0 }: { unreadCount?: number }) {
           const active =
             current === link.href ||
             (link.href !== "/admin" && current.startsWith(link.href));
-          const showUnread = link.href === "/admin/messages" && unreadCount > 0;
+          const badge =
+            link.href === "/admin/messages"
+              ? unreadCount
+              : link.href === "/admin/orders"
+                ? pendingOrderCount
+                : 0;
+          const showBadge = badge > 0;
           return (
             <Link
               key={link.href}
@@ -42,13 +55,13 @@ export function AdminNav({ unreadCount = 0 }: { unreadCount?: number }) {
               }`}
             >
               <span>{link.label}</span>
-              {showUnread ? (
+              {showBadge ? (
                 <span
                   className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-xs font-semibold tabular-nums ${
                     active ? "bg-black text-gold" : "bg-gold text-black"
                   }`}
                 >
-                  {unreadCount > 99 ? "99+" : unreadCount}
+                  {badge > 99 ? "99+" : badge}
                 </span>
               ) : null}
             </Link>

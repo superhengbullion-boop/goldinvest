@@ -29,17 +29,21 @@ export function LiveRatesBoard() {
         {gold.rows.length > 0 ? (
           <MetalRateTable
             metal="Gold"
+            metalCode="XAU"
             rows={gold.rows}
             updatedAt={receivedAt ?? gold.updatedAt}
             tone="gold"
+            enableBuy
           />
         ) : null}
         {silver.rows.length > 0 ? (
           <MetalRateTable
             metal="Silver"
+            metalCode="XAG"
             rows={silver.rows}
             updatedAt={receivedAt ?? silver.updatedAt}
             tone="silver"
+            enableBuy
           />
         ) : null}
       </div>

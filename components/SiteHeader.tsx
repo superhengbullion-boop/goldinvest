@@ -9,17 +9,22 @@ import { NAV_LINKS } from "@/lib/cms";
 
 export function SiteHeader({
   accountName,
+  cartCount = 0,
   logo,
   siteName,
 }: {
   accountName?: string | null;
+  cartCount?: number;
   logo?: string;
   siteName?: string;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const accountLinks = accountName
-    ? [{ href: "/portal", label: "My account" }]
+    ? [
+        { href: "/portal", label: "My account" },
+        { href: "/portal/cart", label: cartCount > 0 ? `Cart (${cartCount})` : "Cart" },
+      ]
     : [{ href: "/login", label: "Login" }];
 
   return (
@@ -58,7 +63,9 @@ export function SiteHeader({
               href={link.href}
               onClick={() => setOpen(false)}
               className={`block py-3 uppercase tracking-wide ${
-                pathname === link.href ? "text-gold" : "text-ivory hover:text-gold"
+                pathname === link.href || pathname.startsWith(link.href + "/")
+                  ? "text-gold"
+                  : "text-ivory hover:text-gold"
               }`}
             >
               {link.label}
@@ -92,7 +99,27 @@ export function SiteHeader({
         <div className="flex shrink-0 items-center justify-end gap-6 text-sm uppercase tracking-wide whitespace-nowrap">
           {accountName ? (
             <>
-              <Link href="/portal" className={pathname === "/portal" ? "text-gold" : "hover:text-gold"}>
+              <Link
+                href="/portal/cart"
+                className={
+                  pathname.startsWith("/portal/cart") ? "text-gold" : "hover:text-gold"
+                }
+              >
+                Cart
+                {cartCount > 0 ? (
+                  <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-gold px-1.5 py-0.5 text-xs font-semibold tabular-nums text-black">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                ) : null}
+              </Link>
+              <Link
+                href="/portal"
+                className={
+                  pathname === "/portal" || pathname.startsWith("/portal/history")
+                    ? "text-gold"
+                    : "hover:text-gold"
+                }
+              >
                 Account
               </Link>
               <form action={memberLogout}>

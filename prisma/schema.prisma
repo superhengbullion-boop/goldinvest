@@ -121,16 +121,56 @@ model RateBookAdj {
 
 /// Portal member. id 1 => memberId SHB0000001. They cannot change memberId.
 model Member {
-  id           Int       @id @default(autoincrement())
-  memberId     String    @unique
-  username     String    @unique
+  id           Int        @id @default(autoincrement())
+  memberId     String     @unique
+  username     String     @unique
   passwordHash String
   phone        String
-  email        String    @unique
+  email        String     @unique
   fullName     String
-  isActive     Boolean   @default(true)
+  isActive     Boolean    @default(true)
   rateBookId   String?
-  rateBook     RateBook? @relation(fields: [rateBookId], references: [id], onDelete: SetNull)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  rateBook     RateBook?  @relation(fields: [rateBookId], references: [id], onDelete: SetNull)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  cartItems    CartItem[]
+  orders       Order[]
+}
+
+/// Member cart line for MYR/KG buy (locks sell price at add time).
+model CartItem {
+  id               String   @id @default(cuid())
+  memberId         Int
+  metal            String
+  unitKey          String   @default("myr-kg")
+  lockedSellPrice  Decimal  @db.Decimal(16, 6)
+  qtyKg            Decimal  @db.Decimal(16, 6)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  member           Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, metal, unitKey])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNo     String      @unique
+  memberId    Int
+  status      String      @default("pending")
+  totalAmount Decimal     @db.Decimal(16, 2)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id              String  @id @default(cuid())
+  orderId         String
+  metal           String
+  unitKey         String  @default("myr-kg")
+  lockedSellPrice Decimal @db.Decimal(16, 6)
+  qtyKg           Decimal @db.Decimal(16, 6)
+  lineTotal       Decimal @db.Decimal(16, 2)
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BuyKgButton } from "@/components/BuyKgButton";
 import { formatPrice } from "@/lib/format-price";
 import type { BoardRow } from "@/lib/metal-quotes";
 import { formatRateStamp } from "@/lib/rate-time";
@@ -34,14 +35,18 @@ function PriceCell({ value, digits }: { value: number; digits: number }) {
 
 export function MetalRateTable({
   metal,
+  metalCode,
   rows,
   updatedAt,
   tone,
+  enableBuy = false,
 }: {
   metal: string;
+  metalCode?: "XAU" | "XAG";
   rows: BoardRow[];
   updatedAt: Date | null;
   tone: "gold" | "silver";
+  enableBuy?: boolean;
 }) {
   const headerClass = tone === "gold" ? "bg-gold text-black" : "bg-ivory text-black";
 
@@ -64,7 +69,12 @@ export function MetalRateTable({
           <tbody>
             {rows.map((row) => (
               <tr key={row.key} className="border-t border-white/10">
-                <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">{row.label}</td>
+                <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">
+                  {row.label}
+                  {enableBuy && metalCode && row.key === "myr-kg" ? (
+                    <BuyKgButton metal={metalCode} sellPrice={row.sell} digits={row.digits} />
+                  ) : null}
+                </td>
                 <PriceCell value={row.buy} digits={row.digits} />
                 <PriceCell value={row.sell} digits={row.digits} />
               </tr>
