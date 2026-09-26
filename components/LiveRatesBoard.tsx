@@ -4,7 +4,7 @@ import { MetalRateTable } from "@/components/MetalRateTable";
 import { useMarketRates } from "@/components/MarketRatesProvider";
 
 export function LiveRatesBoard() {
-  const { loading, error, gold, silver } = useMarketRates();
+  const { loading, error, gold, silver, receivedAt } = useMarketRates();
 
   if (loading && gold.rows.length === 0 && silver.rows.length === 0) {
     return <p className="mt-16 text-mist max-md:text-center">Loading live rates…</p>;
@@ -27,13 +27,18 @@ export function LiveRatesBoard() {
       ) : null}
       <div className="mt-10 grid grid-cols-2 gap-10 max-md:grid-cols-1 max-md:gap-12">
         {gold.rows.length > 0 ? (
-          <MetalRateTable metal="Gold" rows={gold.rows} updatedAt={gold.updatedAt} tone="gold" />
+          <MetalRateTable
+            metal="Gold"
+            rows={gold.rows}
+            updatedAt={receivedAt ?? gold.updatedAt}
+            tone="gold"
+          />
         ) : null}
         {silver.rows.length > 0 ? (
           <MetalRateTable
             metal="Silver"
             rows={silver.rows}
-            updatedAt={silver.updatedAt}
+            updatedAt={receivedAt ?? silver.updatedAt}
             tone="silver"
           />
         ) : null}
