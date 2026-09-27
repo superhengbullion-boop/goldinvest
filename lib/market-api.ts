@@ -7,11 +7,13 @@ import {
 } from "@/lib/eliz-market";
 import type { MarketApiResponse, MarketMetalPayload, MarketTickerItem } from "@/lib/market-types";
 import {
+  adjLookup,
   applyAdjustments,
-  DEFAULT_MANUAL_FX,
+  buildRatesBoard,
+  DEFAULT_MANUAL_IDR_MYR,
   elizSnapshotToBoardRows,
   elizSnapshotUpdatedAt,
-  type ManualFxRates,
+  type ManualIdrMyr,
   type RateAdj,
 } from "@/lib/metal-quotes";
 
@@ -23,12 +25,10 @@ function metalPayload(
   snapshot: ElizMarketSnapshot,
   metal: string,
   adjustments: RateAdj[],
-  manualFx: ManualFxRates,
 ): MarketMetalPayload {
   const updatedAt = elizSnapshotUpdatedAt(snapshot);
-  const manual = metal === "XAG" ? manualFx.XAG : manualFx.XAU;
   return {
-    rows: applyAdjustments(elizSnapshotToBoardRows(snapshot, manual), metal, adjustments),
+    rows: applyAdjustments(elizSnapshotToBoardRows(snapshot), metal, adjustments),
     updatedAt: updatedAt?.toISOString() ?? null,
   };
 }
@@ -53,12 +53,17 @@ function buildResponse(
   snapshots: { xau: ElizMarketSnapshot; xag: ElizMarketSnapshot },
   adjustments: RateAdj[],
   assigned: boolean,
-  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
+  manualIdrMyr: ManualIdrMyr = DEFAULT_MANUAL_IDR_MYR,
 ): MarketApiResponse {
   const goldAdj = adjustments.filter((item) => item.metal === "XAU");
   const silverAdj = adjustments.filter((item) => item.metal === "XAG");
-  const gold = metalPayload(snapshots.xau, "XAU", goldAdj, manualFx);
-  const silver = metalPayload(snapshots.xag, "XAG", silverAdj, manualFx);
+  const gold = metalPayload(snapshots.xau, "XAU", goldAdj);
+  const silver = metalPayload(snapshots.xag, "XAG", silverAdj);
+  const idrMyrAdj = adjLookup(goldAdj, "XAU", "idr-myr");
+  const board: MarketMetalPayload = {
+    rows: buildRatesBoard(gold.rows, silver.rows, manualIdrMyr, idrMyrAdj),
+    updatedAt: gold.updatedAt,
+  };
 
   const ticker = assigned
     ? ([
@@ -67,7 +72,7 @@ function buildResponse(
       ].filter(Boolean) as MarketTickerItem[])
     : [];
 
-  return { ok: true, assigned, ticker, gold, silver };
+  return { ok: true, assigned, ticker, gold, silver, board };
 }
 
 export async function getElizSnapshots(): Promise<ElizSnapshots> {
@@ -89,17 +94,17 @@ export function buildMarketResponse(
   snapshots: ElizSnapshots,
   adjustments: RateAdj[] = [],
   assigned = true,
-  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
+  manualIdrMyr: ManualIdrMyr = DEFAULT_MANUAL_IDR_MYR,
 ): MarketApiResponse {
-  return buildResponse(snapshots, adjustments, assigned, manualFx);
+  return buildResponse(snapshots, adjustments, assigned, manualIdrMyr);
 }
 
 export async function getLiveMarket(
   _source: string,
   adjustments: RateAdj[] = [],
   assigned = true,
-  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
+  manualIdrMyr: ManualIdrMyr = DEFAULT_MANUAL_IDR_MYR,
 ): Promise<MarketApiResponse> {
   const snapshots = await getElizSnapshots();
-  return buildMarketResponse(snapshots, adjustments, assigned, manualFx);
+  return buildMarketResponse(snapshots, adjustments, assigned, manualIdrMyr);
 }

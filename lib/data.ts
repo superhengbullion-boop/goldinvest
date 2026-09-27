@@ -5,10 +5,10 @@ import {
   DEFAULT_ABOUT, DEFAULT_CONTACT, DEFAULT_HOME, DEFAULT_RATES_PAGE, DEFAULT_TERMS,
 } from "@/lib/defaults";
 import {
-  DEFAULT_MANUAL_FX,
+  DEFAULT_MANUAL_IDR_MYR,
   MANUAL_RATES_SLUG,
   normalizeManualFx,
-  type ManualFxRates,
+  type ManualIdrMyr,
 } from "@/lib/metal-quotes";
 import {
   DEFAULT_SITE_SETTINGS,
@@ -131,17 +131,17 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   }
 }
 
-export async function getManualFxRates(): Promise<ManualFxRates> {
+export async function getManualFxRates(): Promise<ManualIdrMyr> {
   try {
     const row = await queryOne<PageRow>(
       "SELECT `content` FROM `Page` WHERE `slug`=? LIMIT 1",
       [MANUAL_RATES_SLUG],
     );
-    if (!row) return DEFAULT_MANUAL_FX;
+    if (!row) return DEFAULT_MANUAL_IDR_MYR;
     return normalizeManualFx(asJson(row.content, {}));
   } catch (err) {
     console.error("[cms] getManualFxRates failed, using fallback:", err);
-    return DEFAULT_MANUAL_FX;
+    return DEFAULT_MANUAL_IDR_MYR;
   }
 }
 

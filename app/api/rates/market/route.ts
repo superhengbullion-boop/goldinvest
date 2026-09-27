@@ -44,6 +44,7 @@ export async function GET() {
         ticker: [],
         gold: { rows: [], updatedAt: null },
         silver: { rows: [], updatedAt: null },
+        board: { rows: [], updatedAt: null },
         error: message,
       },
       { status: 502 },

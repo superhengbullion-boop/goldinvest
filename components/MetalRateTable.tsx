@@ -33,23 +33,26 @@ function PriceCell({ value, digits }: { value: number; digits: number }) {
   );
 }
 
+const BUY_METAL_BY_ROW_KEY: Record<string, "XAU" | "XAG"> = {
+  "physical-gold-myr-kg": "XAU",
+  "physical-silver-myr-kg": "XAG",
+};
+
 export function MetalRateTable({
-  metal,
-  metalCode,
   rows,
   updatedAt,
-  tone,
+  titleLabel = "HENG Precious Metals",
+  buyLabel = "Super Heng BUY",
+  sellLabel = "Super Heng SELL",
   enableBuy = false,
 }: {
-  metal: string;
-  metalCode?: "XAU" | "XAG";
   rows: BoardRow[];
   updatedAt: Date | null;
-  tone: "gold" | "silver";
+  titleLabel?: string;
+  buyLabel?: string;
+  sellLabel?: string;
   enableBuy?: boolean;
 }) {
-  const headerClass = tone === "gold" ? "bg-gold text-black" : "bg-ivory text-black";
-
   return (
     <div>
       {updatedAt ? (
@@ -59,26 +62,46 @@ export function MetalRateTable({
       ) : null}
       <div className="overflow-x-auto">
         <table className="w-full text-left">
-          <thead className={headerClass}>
+          <thead className="bg-gold text-black">
             <tr>
-              <th className="px-4 py-3 font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">{metal}</th>
-              <th className="px-4 py-3 text-right font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">Buy</th>
-              <th className="px-4 py-3 text-right font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">Sell</th>
+              <th className="px-4 py-3 font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">
+                {titleLabel}
+              </th>
+              <th className="px-4 py-3 text-right font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">
+                {buyLabel}
+              </th>
+              <th className="px-4 py-3 text-right font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">
+                {sellLabel}
+              </th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.key} className="border-t border-white/10">
-                <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">
-                  {row.label}
-                  {enableBuy && metalCode && row.key === "myr-kg" ? (
-                    <BuyKgButton metal={metalCode} sellPrice={row.sell} digits={row.digits} />
-                  ) : null}
-                </td>
-                <PriceCell value={row.buy} digits={row.digits} />
-                <PriceCell value={row.sell} digits={row.digits} />
-              </tr>
-            ))}
+            {rows.map((row) => {
+              const buyMetal = BUY_METAL_BY_ROW_KEY[row.key];
+              return (
+                <tr key={row.key} className="border-t border-white/10">
+                  <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">
+                    {row.label}
+                    {enableBuy && buyMetal ? (
+                      <BuyKgButton metal={buyMetal} sellPrice={row.sell} digits={row.digits} />
+                    ) : null}
+                  </td>
+                  {row.comingSoon ? (
+                    <td
+                      colSpan={2}
+                      className="px-4 py-3 text-right text-mist italic max-md:px-2 max-md:py-2 max-md:text-sm"
+                    >
+                      Coming Soon
+                    </td>
+                  ) : (
+                    <>
+                      <PriceCell value={row.buy} digits={row.digits} />
+                      <PriceCell value={row.sell} digits={row.digits} />
+                    </>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

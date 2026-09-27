@@ -22,6 +22,7 @@ export type BoardRow = {
   buy: number;
   sell: number;
   digits: number;
+  comingSoon?: boolean;
 };
 
 export type ManualIdrMyr = {
@@ -29,15 +30,7 @@ export type ManualIdrMyr = {
   sell: number;
 };
 
-export type ManualFxRates = {
-  XAU: ManualIdrMyr;
-  XAG: ManualIdrMyr;
-};
-
-export const DEFAULT_MANUAL_FX: ManualFxRates = {
-  XAU: { buy: 0, sell: 0 },
-  XAG: { buy: 0, sell: 0 },
-};
+export const DEFAULT_MANUAL_IDR_MYR: ManualIdrMyr = { buy: 0, sell: 0 };
 
 export function metalLabel(metal: string) {
   if (metal === "XAU") return "Gold";
@@ -77,10 +70,9 @@ function fxRow(usd: QuoteLike, myr: QuoteLike): BoardRow | null {
   };
 }
 
-/** Display order for public rates + admin books. */
+/** Display order for each metal's raw board (Eliz-derived, no manual rows). */
 export const BOARD_UNITS = [
   { key: "myr-kg", label: "MYR/KG", digits: 0, source: "api" },
-  { key: "idr-myr", label: "IDR/MYR", digits: 2, source: "manual" },
   { key: "usd-myr", label: "USD/MYR", digits: 4, source: "api" },
   { key: "usd-oz", label: "USD/OZ", digits: 2, source: "api" },
 ] as const;
@@ -96,6 +88,21 @@ export const RATE_METALS = [
 export type BoardUnitKey = (typeof BOARD_UNITS)[number]["key"];
 export type RateMetalKey = (typeof RATE_METALS)[number]["key"];
 
+/**
+ * Rows eligible for per-book buy/sell offsets, mapped to the combined rates
+ * board key (for preview lookups) and the underlying (metal, unitKey) pair
+ * used to store the offset in `RateBookAdj`. IDR/MYR and USD/MYR are shared
+ * (not per-metal) values, so their offsets are stored under metal "XAU" by
+ * convention — there is still only one editable row for each in the UI.
+ */
+export const OFFSETTABLE_ROWS = [
+  { boardKey: "physical-gold-myr-kg", label: "Physical Gold 999 - MYR/KG", metal: "XAU", unitKey: "myr-kg", digits: 0 },
+  { boardKey: "physical-silver-myr-kg", label: "Physical Silver 999 - MYR/KG", metal: "XAG", unitKey: "myr-kg", digits: 0 },
+  { boardKey: "gold-spot-usd-oz", label: "Gold(Spot) USD/OZ", metal: "XAU", unitKey: "usd-oz", digits: 2 },
+  { boardKey: "idr-myr", label: "IDR/MYR", metal: "XAU", unitKey: "idr-myr", digits: 2 },
+  { boardKey: "usd-myr", label: "USD/MYR", metal: "XAU", unitKey: "usd-myr", digits: 4 },
+] as const;
+
 export type RateAdj = {
   metal: string;
   unitKey: string;
@@ -104,14 +111,12 @@ export type RateAdj = {
 };
 
 export function defaultAdjustments() {
-  return RATE_METALS.flatMap((metal) =>
-    BOARD_UNITS.map((unit) => ({
-      metal: metal.key,
-      unitKey: unit.key,
-      buyDelta: 0,
-      sellDelta: 0,
-    })),
-  );
+  return OFFSETTABLE_ROWS.map((row) => ({
+    metal: row.metal,
+    unitKey: row.unitKey,
+    buyDelta: 0,
+    sellDelta: 0,
+  }));
 }
 
 export function orderBoardRows(rows: BoardRow[]): BoardRow[] {
@@ -176,11 +181,8 @@ function parseElizSnapshot(raw: unknown): ElizMarketSnapshot | null {
   }
 }
 
-/** Public rates page rows in display order, including manual IDR/MYR. */
-export function elizSnapshotToBoardRows(
-  snapshot: ElizMarketSnapshot,
-  manualIdrMyr?: ManualIdrMyr | null,
-): BoardRow[] {
+/** Raw per-metal board rows: MYR/KG, USD/MYR, USD/OZ (no manual rows injected). */
+export function elizSnapshotToBoardRows(snapshot: ElizMarketSnapshot): BoardRow[] {
   const rows: BoardRow[] = [];
 
   const myrBuy = num(snapshot.price?.myr?.buy);
@@ -188,8 +190,6 @@ export function elizSnapshotToBoardRows(
   if (myrBuy != null && myrSell != null) {
     rows.push({ key: "myr-kg", label: "MYR/KG", buy: myrBuy, sell: myrSell, digits: 0 });
   }
-
-  rows.push(idrMyrRow(manualIdrMyr));
 
   const fxBuy = num(snapshot.myrRate?.bidPrice);
   const fxSell = num(snapshot.myrRate?.askPrice);
@@ -216,20 +216,15 @@ export function elizSnapshotUpdatedAt(snapshot: ElizMarketSnapshot): Date | null
 export function elizBoardFromQuote(
   quotes: Array<{ metal: string; currency: string; raw?: unknown; fetchedAt: Date }>,
   metal: string,
-  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
 ): { rows: BoardRow[]; updatedAt: Date | null } {
   const row = quotes.find((quote) => quote.metal === metal && quote.currency === ELIZ_CURRENCY);
-  const manual = metal === "XAG" ? manualFx.XAG : manualFx.XAU;
-  if (!row) return { rows: [idrMyrRow(manual)], updatedAt: null };
+  if (!row) return { rows: [], updatedAt: null };
   const snapshot = parseElizSnapshot(row.raw);
   if (!snapshot) {
-    return {
-      rows: orderBoardRows([idrMyrRow(manual)]),
-      updatedAt: row.fetchedAt,
-    };
+    return { rows: [], updatedAt: row.fetchedAt };
   }
   return {
-    rows: elizSnapshotToBoardRows(snapshot, manual),
+    rows: elizSnapshotToBoardRows(snapshot),
     updatedAt: elizSnapshotUpdatedAt(snapshot) ?? row.fetchedAt,
   };
 }
@@ -237,23 +232,17 @@ export function elizBoardFromQuote(
 export function marketBoardForMetal(
   quotes: Array<QuoteLike & { raw?: unknown; currency: string; metal: string; fetchedAt: Date }>,
   metal: string,
-  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
 ): BoardRow[] {
-  const eliz = elizBoardFromQuote(quotes, metal, manualFx);
-  if (eliz.rows.some((row) => row.key !== "idr-myr")) return eliz.rows;
+  const eliz = elizBoardFromQuote(quotes, metal);
+  if (eliz.rows.length > 0) return eliz.rows;
 
   return metalBoard(
     quotes.find((quote) => quote.metal === metal && quote.currency === "USD"),
     quotes.find((quote) => quote.metal === metal && quote.currency === "MYR"),
-    metal === "XAG" ? manualFx.XAG : manualFx.XAU,
   );
 }
 
-export function metalBoard(
-  usd?: QuoteLike | null,
-  myr?: QuoteLike | null,
-  manualIdrMyr?: ManualIdrMyr | null,
-): BoardRow[] {
+export function metalBoard(usd?: QuoteLike | null, myr?: QuoteLike | null): BoardRow[] {
   const rows: BoardRow[] = [];
   if (myr) {
     const kg = scale(
@@ -262,7 +251,6 @@ export function metalBoard(
     );
     if (kg) rows.push({ key: "myr-kg", label: "MYR/KG", ...kg, digits: 0 });
   }
-  rows.push(idrMyrRow(manualIdrMyr));
   if (usd && myr) {
     const fx = fxRow(usd, myr);
     if (fx) rows.push({ ...fx, label: "USD/MYR" });
@@ -274,15 +262,71 @@ export function metalBoard(
   return orderBoardRows(rows);
 }
 
+/** Display order + labels for the public/admin unified rates table. */
+export const RATES_BOARD_UNITS = [
+  { key: "physical-gold-myr-kg", label: "Physical Gold 999 - MYR/KG", digits: 0, comingSoon: false },
+  { key: "physical-silver-myr-kg", label: "Physical Silver 999 - MYR/KG", digits: 0, comingSoon: false },
+  { key: "gold-spot-usd-oz", label: "Gold(Spot) USD/OZ", digits: 2, comingSoon: false },
+  { key: "idr-myr", label: "IDR/MYR", digits: 2, comingSoon: false },
+  { key: "usd-myr", label: "USD/MYR", digits: 4, comingSoon: false },
+  { key: "myr-usdt", label: "MYR/USDT", digits: 0, comingSoon: true },
+  { key: "idr-usdt", label: "IDR/USDT", digits: 0, comingSoon: true },
+] as const;
+
+/**
+ * Builds the unified 7-row rates board shown on the public page and in admin:
+ * Physical Gold MYR/KG, Physical Silver MYR/KG, Gold(Spot) USD/OZ, IDR/MYR
+ * (manual, shared), USD/MYR (from Gold's Eliz snapshot), and two static
+ * "Coming Soon" placeholders for MYR/USDT and IDR/USDT.
+ */
+export function buildRatesBoard(
+  goldRows: BoardRow[],
+  silverRows: BoardRow[],
+  manualIdrMyr: ManualIdrMyr = DEFAULT_MANUAL_IDR_MYR,
+  idrMyrAdjustment: { buyDelta: number; sellDelta: number } = { buyDelta: 0, sellDelta: 0 },
+): BoardRow[] {
+  const goldByKey = new Map(goldRows.map((row) => [row.key, row]));
+  const silverByKey = new Map(silverRows.map((row) => [row.key, row]));
+  const idrMyr = idrMyrRow(manualIdrMyr);
+  const buyDelta = Number.isFinite(idrMyrAdjustment.buyDelta) ? idrMyrAdjustment.buyDelta : 0;
+  const sellDelta = Number.isFinite(idrMyrAdjustment.sellDelta) ? idrMyrAdjustment.sellDelta : 0;
+  const adjustedIdrMyr: BoardRow = {
+    ...idrMyr,
+    buy: Math.max(0, idrMyr.buy + buyDelta),
+    sell: Math.max(0, idrMyr.sell + sellDelta),
+  };
+
+  const bySourceKey: Record<string, BoardRow | undefined> = {
+    "physical-gold-myr-kg": goldByKey.get("myr-kg"),
+    "physical-silver-myr-kg": silverByKey.get("myr-kg"),
+    "gold-spot-usd-oz": goldByKey.get("usd-oz"),
+    "idr-myr": adjustedIdrMyr,
+    "usd-myr": goldByKey.get("usd-myr"),
+  };
+
+  return RATES_BOARD_UNITS.map((unit) => {
+    if (unit.comingSoon) {
+      return { key: unit.key, label: unit.label, buy: 0, sell: 0, digits: unit.digits, comingSoon: true };
+    }
+    const source = bySourceKey[unit.key];
+    return {
+      key: unit.key,
+      label: unit.label,
+      buy: source?.buy ?? 0,
+      sell: source?.sell ?? 0,
+      digits: unit.digits,
+    };
+  });
+}
+
 export function tickerItems(
   quotes: Array<QuoteLike & { raw?: unknown; currency: string; metal: string; fetchedAt: Date }>,
   adjustments: RateAdj[] = [],
-  manualFx: ManualFxRates = DEFAULT_MANUAL_FX,
 ) {
   const hasEliz = quotes.some((quote) => quote.currency === ELIZ_CURRENCY);
   if (hasEliz) {
     return RATE_METALS.flatMap(({ key }) => {
-      const { rows } = elizBoardFromQuote(quotes, key, manualFx);
+      const { rows } = elizBoardFromQuote(quotes, key);
       const kg = rows.find((row) => row.key === "myr-kg");
       if (!kg) return [];
       const adj = adjLookup(adjustments, key, "myr-kg");
@@ -320,16 +364,26 @@ export function tickerItems(
     });
 }
 
-export function normalizeManualFx(raw: unknown): ManualFxRates {
+export function normalizeManualFx(raw: unknown): ManualIdrMyr {
   const content = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-  function side(metal: "XAU" | "XAG"): ManualIdrMyr {
-    const block = content[metal];
-    if (!block || typeof block !== "object") return { ...DEFAULT_MANUAL_FX[metal] };
-    const row = block as Record<string, unknown>;
+
+  if (typeof content.buy !== "undefined" || typeof content.sell !== "undefined") {
+    return {
+      buy: Number(content.buy) || 0,
+      sell: Number(content.sell) || 0,
+    };
+  }
+
+  // Legacy per-metal shape { XAU: { buy, sell }, XAG: { buy, sell } } — fall back to XAU
+  // so a previously configured value is not lost on first load after this change.
+  const legacyXau = content.XAU;
+  if (legacyXau && typeof legacyXau === "object") {
+    const row = legacyXau as Record<string, unknown>;
     return {
       buy: Number(row.buy) || 0,
       sell: Number(row.sell) || 0,
     };
   }
-  return { XAU: side("XAU"), XAG: side("XAG") };
+
+  return { ...DEFAULT_MANUAL_IDR_MYR };
 }
