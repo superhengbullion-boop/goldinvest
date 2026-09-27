@@ -22,80 +22,72 @@ import {
 import {
   adjLookup,
   applyAdjustments,
-  BOARD_UNITS,
+  buildRatesBoard,
   elizBoardFromQuote,
   ELIZ_CURRENCY,
   marketBoardForMetal,
   metalLabel,
-  RATE_METALS,
+  OFFSETTABLE_ROWS,
 } from "@/lib/metal-quotes";
 import { formatInZone, RATE_TIMEZONE } from "@/lib/rate-time";
 
 export default async function AdminRatesPage() {
-  const [quotes, times, latest, books, manualFx] = await Promise.all([
+  const [quotes, times, latest, books, manualIdrMyr] = await Promise.all([
     getMetalQuotes(),
     getRateRefreshTimes(),
     getLatestQuoteFetch(),
     getRateBooks(),
     getManualFxRates(),
   ]);
-  const goldMarket = marketBoardForMetal(quotes, "XAU", manualFx);
-  const silverMarket = marketBoardForMetal(quotes, "XAG", manualFx);
-  const goldEliz = elizBoardFromQuote(quotes, "XAU", manualFx);
-  const silverEliz = elizBoardFromQuote(quotes, "XAG", manualFx);
+  const goldMarket = marketBoardForMetal(quotes, "XAU");
+  const silverMarket = marketBoardForMetal(quotes, "XAG");
+  const goldEliz = elizBoardFromQuote(quotes, "XAU");
+  const silverEliz = elizBoardFromQuote(quotes, "XAG");
   const elizQuotes = quotes.filter((quote) => quote.currency === ELIZ_CURRENCY);
+  const combinedBoard = buildRatesBoard(goldMarket, silverMarket, manualIdrMyr);
+  const combinedUpdatedAt = goldEliz.updatedAt ?? silverEliz.updatedAt;
 
   return (
     <div>
       <h1 className="font-display text-4xl text-gold">Rates Setting</h1>
       <p className="mt-2 mb-8 max-w-2xl text-mist">
-        Live market rows come from Eliz. IDR/MYR is set manually below for Gold and Silver.
-        Create price books with add/subtract offsets, then assign a book to each member.
+        Live market rows come from Eliz. IDR/MYR is set manually below and shared across the
+        rates board. Create price books with add/subtract offsets on the physical MYR/KG rows,
+        then assign a book to each member.
       </p>
 
       <section className="mb-10 rounded-xl border border-gold/25 p-6">
         <h2 className="font-display text-xl">Manual IDR/MYR</h2>
         <p className="mt-1 mb-6 text-sm text-mist">
-          Not from the API. These base prices appear on the rates board for each metal.
-          Rate books can still add or subtract offsets on top.
+          Not from the API. This base price appears once on the rates board, shared by Gold and
+          Silver.
         </p>
         <SaveFeedbackForm
           action={saveManualFxRates}
-          className="grid grid-cols-2 gap-8 max-md:grid-cols-1"
-          successMessage="IDR/MYR rates saved successfully."
+          className="flex flex-wrap gap-4"
+          successMessage="IDR/MYR rate saved successfully."
         >
-          {RATE_METALS.map((metal) => {
-            const side = metal.key === "XAU" ? manualFx.XAU : manualFx.XAG;
-            const prefix = metal.key === "XAU" ? "xau" : "xag";
-            return (
-              <div key={metal.key} className="rounded-lg border border-gold/15 p-4">
-                <p className="mb-4 font-display text-lg text-gold">{metal.label}</p>
-                <div className="flex flex-wrap gap-4">
-                  <label className="text-sm">
-                    <span className="mb-1 block text-mist">Buy</span>
-                    <input
-                      name={`${prefix}_idr_buy`}
-                      type="number"
-                      step="any"
-                      defaultValue={side.buy}
-                      className="w-36 rounded border border-gold/30 bg-ink px-3 py-2"
-                    />
-                  </label>
-                  <label className="text-sm">
-                    <span className="mb-1 block text-mist">Sell</span>
-                    <input
-                      name={`${prefix}_idr_sell`}
-                      type="number"
-                      step="any"
-                      defaultValue={side.sell}
-                      className="w-36 rounded border border-gold/30 bg-ink px-3 py-2"
-                    />
-                  </label>
-                </div>
-              </div>
-            );
-          })}
-          <div className="col-span-2 flex flex-wrap items-center gap-4 max-md:col-span-1">
+          <label className="text-sm">
+            <span className="mb-1 block text-mist">Buy</span>
+            <input
+              name="idr_buy"
+              type="number"
+              step="any"
+              defaultValue={manualIdrMyr.buy}
+              className="w-36 rounded border border-gold/30 bg-ink px-3 py-2"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-mist">Sell</span>
+            <input
+              name="idr_sell"
+              type="number"
+              step="any"
+              defaultValue={manualIdrMyr.sell}
+              className="w-36 rounded border border-gold/30 bg-ink px-3 py-2"
+            />
+          </label>
+          <div className="flex items-end">
             <SaveFeedbackSubmit label="Save IDR/MYR" />
           </div>
         </SaveFeedbackForm>
@@ -118,23 +110,8 @@ export default async function AdminRatesPage() {
           <p className="mt-6 text-mist">No market snapshots in the database yet.</p>
         ) : (
           <>
-            <div className="mt-6 grid grid-cols-2 gap-8 max-md:grid-cols-1">
-              {goldMarket.length > 0 ? (
-                <MetalRateTable
-                  metal="Gold"
-                  rows={goldMarket}
-                  updatedAt={goldEliz.updatedAt}
-                  tone="gold"
-                />
-              ) : null}
-              {silverMarket.length > 0 ? (
-                <MetalRateTable
-                  metal="Silver"
-                  rows={silverMarket}
-                  updatedAt={silverEliz.updatedAt}
-                  tone="silver"
-                />
-              ) : null}
+            <div className="mt-6 w-full">
+              <MetalRateTable rows={combinedBoard} updatedAt={combinedUpdatedAt} />
             </div>
             {elizQuotes.length > 0 ? (
               <ul className="mt-6 space-y-1 text-sm text-mist">
@@ -166,8 +143,10 @@ export default async function AdminRatesPage() {
       <section className="mb-10 rounded-xl border border-gold/25 p-6">
         <h2 className="font-display text-xl">Price books</h2>
         <p className="mt-1 mb-6 text-sm text-mist">
-          Positive values add to the market price; negative values subtract. Assign a
-          book to a member under Members so they see that price list after login.
+          Positive values add to the market price; negative values subtract. Offsets apply to
+          the Physical Gold / Physical Silver MYR/KG rows, Gold(Spot) USD/OZ, IDR/MYR, and
+          USD/MYR. Assign a book to a member under Members so they see that price list after
+          login.
         </p>
 
         <SaveFeedbackForm
@@ -241,17 +220,24 @@ export default async function AdminRatesPage() {
                     />
                   </label>
 
-                  {RATE_METALS.map((metal) => {
-                    const market = metal.key === "XAU" ? goldMarket : silverMarket;
-                    const preview = applyAdjustments(market, metal.key, book.adjustments);
+                  {(() => {
+                    const goldAdjusted = applyAdjustments(goldMarket, "XAU", book.adjustments);
+                    const silverAdjusted = applyAdjustments(silverMarket, "XAG", book.adjustments);
+                    const idrMyrAdj = adjLookup(book.adjustments, "XAU", "idr-myr");
+                    const bookPreview = buildRatesBoard(
+                      goldAdjusted,
+                      silverAdjusted,
+                      manualIdrMyr,
+                      idrMyrAdj,
+                    );
                     return (
-                      <div key={metal.key}>
-                        <p className="mb-3 font-display text-lg">{metal.label} offsets</p>
+                      <div>
+                        <p className="mb-3 font-display text-lg">Rate offsets</p>
                         <div className="overflow-x-auto">
                           <table className="w-full min-w-lg text-left text-sm">
                             <thead className="text-xs uppercase tracking-[0.14em] text-gold">
                               <tr>
-                                <th className="py-2 pr-3">Unit</th>
+                                <th className="py-2 pr-3">Row</th>
                                 <th className="py-2 pr-3">Market buy / sell</th>
                                 <th className="py-2 pr-3">Buy +/−</th>
                                 <th className="py-2 pr-3">Sell +/−</th>
@@ -259,27 +245,22 @@ export default async function AdminRatesPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              {BOARD_UNITS.map((unit) => {
-                                const marketRow = market.find((row) => row.key === unit.key);
-                                const previewRow = preview.find((row) => row.key === unit.key);
-                                const adj = adjLookup(book.adjustments, metal.key, unit.key);
-                                const digits = marketRow?.digits ?? 2;
+                              {OFFSETTABLE_ROWS.map((row) => {
+                                const marketRow = combinedBoard.find((r) => r.key === row.boardKey);
+                                const previewRow = bookPreview.find((r) => r.key === row.boardKey);
+                                const adj = adjLookup(book.adjustments, row.metal, row.unitKey);
+                                const digits = marketRow?.digits ?? row.digits;
                                 return (
-                                  <tr key={unit.key} className="border-t border-gold/15">
-                                    <td className="py-2 pr-3">{unit.label}</td>
+                                  <tr key={row.boardKey} className="border-t border-gold/15">
+                                    <td className="py-2 pr-3">{row.label}</td>
                                     <td className="py-2 pr-3 text-mist">
-                                      {unit.source === "manual"
-                                        ? "Manual"
-                                        : marketRow
-                                          ? `${formatPrice(marketRow.buy, digits)} / ${formatPrice(marketRow.sell, digits)}`
-                                          : "—"}
-                                      {unit.source === "manual" && marketRow
-                                        ? ` · ${formatPrice(marketRow.buy, digits)} / ${formatPrice(marketRow.sell, digits)}`
-                                        : ""}
+                                      {marketRow
+                                        ? `${formatPrice(marketRow.buy, digits)} / ${formatPrice(marketRow.sell, digits)}`
+                                        : "—"}
                                     </td>
                                     <td className="py-2 pr-3">
                                       <input
-                                        name={`adj_${metal.key}_${unit.key}_buy`}
+                                        name={`adj_${row.metal}_${row.unitKey}_buy`}
                                         type="number"
                                         step="any"
                                         defaultValue={adj.buyDelta}
@@ -288,7 +269,7 @@ export default async function AdminRatesPage() {
                                     </td>
                                     <td className="py-2 pr-3">
                                       <input
-                                        name={`adj_${metal.key}_${unit.key}_sell`}
+                                        name={`adj_${row.metal}_${row.unitKey}_sell`}
                                         type="number"
                                         step="any"
                                         defaultValue={adj.sellDelta}
@@ -308,7 +289,7 @@ export default async function AdminRatesPage() {
                         </div>
                       </div>
                     );
-                  })}
+                  })()}
 
                   <div className="flex flex-wrap items-center gap-4">
                     <SaveFeedbackSubmit label="Save offsets" />

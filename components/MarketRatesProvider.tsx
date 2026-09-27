@@ -28,6 +28,7 @@ type MarketRatesContextValue = {
   ticker: MarketTickerItem[];
   gold: MetalState;
   silver: MetalState;
+  board: MetalState;
   receivedAt: Date | null;
 };
 
@@ -40,6 +41,7 @@ const MarketRatesContext = createContext<MarketRatesContextValue>({
   ticker: [],
   gold: EMPTY_METAL,
   silver: EMPTY_METAL,
+  board: EMPTY_METAL,
   receivedAt: null,
 });
 
@@ -68,6 +70,7 @@ export function MarketRatesProvider({
   const [ticker, setTicker] = useState<MarketTickerItem[]>([]);
   const [gold, setGold] = useState<MetalState>(EMPTY_METAL);
   const [silver, setSilver] = useState<MetalState>(EMPTY_METAL);
+  const [board, setBoard] = useState<MetalState>(EMPTY_METAL);
   const [receivedAt, setReceivedAt] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -77,6 +80,7 @@ export function MarketRatesProvider({
       setTicker([]);
       setGold(EMPTY_METAL);
       setSilver(EMPTY_METAL);
+      setBoard(EMPTY_METAL);
       setReceivedAt(null);
       return;
     }
@@ -94,6 +98,7 @@ export function MarketRatesProvider({
         setTicker(data.ticker);
         setGold(toMetalState(data.gold));
         setSilver(toMetalState(data.silver));
+        setBoard(toMetalState(data.board));
         setReceivedAt(new Date());
         setError(null);
       } catch (err) {
@@ -130,8 +135,8 @@ export function MarketRatesProvider({
   }, [enabled]);
 
   const value = useMemo(
-    () => ({ enabled, loading, error, ticker, gold, silver, receivedAt }),
-    [enabled, loading, error, ticker, gold, silver, receivedAt],
+    () => ({ enabled, loading, error, ticker, gold, silver, board, receivedAt }),
+    [enabled, loading, error, ticker, gold, silver, board, receivedAt],
   );
 
   return <MarketRatesContext.Provider value={value}>{children}</MarketRatesContext.Provider>;

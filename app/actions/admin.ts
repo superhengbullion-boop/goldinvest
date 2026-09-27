@@ -69,14 +69,8 @@ export async function updateSiteSettings(formData: FormData) {
 export async function saveManualFxRates(formData: FormData) {
   await requireAdmin();
   const content = {
-    XAU: {
-      buy: Number(formData.get("xau_idr_buy") ?? 0) || 0,
-      sell: Number(formData.get("xau_idr_sell") ?? 0) || 0,
-    },
-    XAG: {
-      buy: Number(formData.get("xag_idr_buy") ?? 0) || 0,
-      sell: Number(formData.get("xag_idr_sell") ?? 0) || 0,
-    },
+    buy: Number(formData.get("idr_buy") ?? 0) || 0,
+    sell: Number(formData.get("idr_sell") ?? 0) || 0,
   };
   await execute(
     `INSERT INTO \`Page\`(\`id\`,\`slug\`,\`title\`,\`description\`,\`content\`,\`createdAt\`,\`updatedAt\`)
@@ -233,7 +227,7 @@ export async function deleteRateBook(formData: FormData) {
 
 export async function saveRateBookAdjustments(formData: FormData) {
   await requireAdmin();
-  const { BOARD_UNITS, RATE_METALS } = await import("@/lib/metal-quotes");
+  const { OFFSETTABLE_ROWS } = await import("@/lib/metal-quotes");
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const book = await queryOne<{ id: string; name: string }>(
@@ -246,23 +240,21 @@ export async function saveRateBookAdjustments(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim() || book.name;
   await execute("UPDATE `RateBook` SET `name`=?,`updatedAt`=NOW(3) WHERE `id`=?", [name, id]);
 
-  for (const metal of RATE_METALS) {
-    for (const unit of BOARD_UNITS) {
-      const buy  = Number(formData.get(`adj_${metal.key}_${unit.key}_buy`)  ?? 0);
-      const sell = Number(formData.get(`adj_${metal.key}_${unit.key}_sell`) ?? 0);
-      const b = Number.isFinite(buy)  ? buy  : 0;
-      const s = Number.isFinite(sell) ? sell : 0;
-      const existing = adjs.find((a) => a.metal === metal.key && a.unitKey === unit.key);
-      if (existing) {
-        await execute(
-          "UPDATE `RateBookAdj` SET `buyDelta`=?,`sellDelta`=? WHERE `id`=?", [b, s, existing.id],
-        );
-      } else {
-        await execute(
-          "INSERT INTO `RateBookAdj`(`id`,`bookId`,`metal`,`unitKey`,`buyDelta`,`sellDelta`) VALUES(?,?,?,?,?,?)",
-          [newId(), id, metal.key, unit.key, b, s],
-        );
-      }
+  for (const row of OFFSETTABLE_ROWS) {
+    const buy  = Number(formData.get(`adj_${row.metal}_${row.unitKey}_buy`)  ?? 0);
+    const sell = Number(formData.get(`adj_${row.metal}_${row.unitKey}_sell`) ?? 0);
+    const b = Number.isFinite(buy)  ? buy  : 0;
+    const s = Number.isFinite(sell) ? sell : 0;
+    const existing = adjs.find((a) => a.metal === row.metal && a.unitKey === row.unitKey);
+    if (existing) {
+      await execute(
+        "UPDATE `RateBookAdj` SET `buyDelta`=?,`sellDelta`=? WHERE `id`=?", [b, s, existing.id],
+      );
+    } else {
+      await execute(
+        "INSERT INTO `RateBookAdj`(`id`,`bookId`,`metal`,`unitKey`,`buyDelta`,`sellDelta`) VALUES(?,?,?,?,?,?)",
+        [newId(), id, row.metal, row.unitKey, b, s],
+      );
     }
   }
   revalidatePath("/admin/rates"); revalidatePath("/rates");

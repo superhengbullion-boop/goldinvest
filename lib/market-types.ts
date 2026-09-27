@@ -14,6 +14,7 @@ export type MarketBoardRow = {
   buy: number;
   sell: number;
   digits: number;
+  comingSoon?: boolean;
 };
 
 export type MarketMetalPayload = {
@@ -27,5 +28,6 @@ export type MarketApiResponse = {
   ticker: MarketTickerItem[];
   gold: MarketMetalPayload;
   silver: MarketMetalPayload;
+  board: MarketMetalPayload;
   error?: string;
 };
