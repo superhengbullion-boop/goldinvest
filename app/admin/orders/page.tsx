@@ -1,6 +1,7 @@
 import { OrderStatusForm } from "@/components/admin/OrderStatusForm";
 import { formatPrice } from "@/lib/format-price";
 import { metalLabel } from "@/lib/metal-quotes";
+import { tradeSideLabel } from "@/lib/order-math";
 import { getOrdersForAdmin } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,9 @@ export default async function AdminOrdersPage() {
   return (
     <div>
       <h1 className="font-display text-4xl text-gold">Orders</h1>
-      <p className="mt-2 mb-8 text-mist">Member MYR/KG buy orders (locked sell price).</p>
+      <p className="mt-2 mb-8 text-mist">
+        Member MYR/KG buy &amp; sell orders (locked board price).
+      </p>
 
       <div className="space-y-4">
         {orders.map((order) => (
@@ -40,12 +43,12 @@ export default async function AdminOrdersPage() {
             <ul className="mt-4 space-y-2 text-sm">
               {order.items.map((item) => (
                 <li
-                  key={item.id || `${item.metal}-${item.qtyKg}`}
+                  key={item.id || `${item.side}-${item.metal}-${item.qtyKg}`}
                   className="flex flex-wrap justify-between gap-2 border-t border-white/10 pt-2"
                 >
                   <span>
-                    {metalLabel(item.metal)} · {Number(item.qtyKg)} kg @ RM{" "}
-                    {formatPrice(item.lockedSellPrice, 0)} / kg
+                    {tradeSideLabel(item.side)} · {metalLabel(item.metal)} · {Number(item.qtyKg)}{" "}
+                    kg @ RM {formatPrice(item.lockedPrice, 0)} / kg
                   </span>
                   <span className="tabular-nums">RM {formatPrice(item.lineTotal, 2)}</span>
                 </li>

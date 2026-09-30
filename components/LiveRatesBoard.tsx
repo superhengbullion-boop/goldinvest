@@ -26,7 +26,7 @@ export function LiveRatesBoard() {
         </p>
       ) : null}
       <div className="mt-10 w-full">
-        <MetalRateTable rows={board.rows} updatedAt={receivedAt ?? board.updatedAt} enableBuy />
+        <MetalRateTable rows={board.rows} updatedAt={receivedAt ?? board.updatedAt} enableTrade />
       </div>
     </div>
   );

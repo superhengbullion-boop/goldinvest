@@ -137,19 +137,22 @@ model Member {
   orders       Order[]
 }
 
-/// Member cart line for MYR/KG buy (locks sell price at add time).
+/// Member cart line for MYR/KG trade (locks board price at add time).
+/// side=buy locks company sell price; side=sell locks company buy price.
 model CartItem {
-  id               String   @id @default(cuid())
-  memberId         Int
-  metal            String
-  unitKey          String   @default("myr-kg")
-  lockedSellPrice  Decimal  @db.Decimal(16, 6)
-  qtyKg            Decimal  @db.Decimal(16, 6)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  member           Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  memberId    Int
+  metal       String
+  unitKey     String   @default("myr-kg")
+  /// buy = member buys from us; sell = member sells to us
+  side        String   @default("buy")
+  lockedPrice Decimal  @db.Decimal(16, 6)
+  qtyKg       Decimal  @db.Decimal(16, 6)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
-  @@unique([memberId, metal, unitKey])
+  @@unique([memberId, metal, unitKey, side])
 }
 
 model Order {
@@ -165,12 +168,13 @@ model Order {
 }
 
 model OrderItem {
-  id              String  @id @default(cuid())
-  orderId         String
-  metal           String
-  unitKey         String  @default("myr-kg")
-  lockedSellPrice Decimal @db.Decimal(16, 6)
-  qtyKg           Decimal @db.Decimal(16, 6)
-  lineTotal       Decimal @db.Decimal(16, 2)
-  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id          String  @id @default(cuid())
+  orderId     String
+  metal       String
+  unitKey     String  @default("myr-kg")
+  side        String  @default("buy")
+  lockedPrice Decimal @db.Decimal(16, 6)
+  qtyKg       Decimal @db.Decimal(16, 6)
+  lineTotal   Decimal @db.Decimal(16, 2)
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }

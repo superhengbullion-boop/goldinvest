@@ -19,7 +19,8 @@ export default async function CartPage({
   const items = cart.map((item) => ({
     id: item.id,
     metal: item.metal,
-    lockedSellPrice: Number(item.lockedSellPrice),
+    side: item.side,
+    lockedPrice: Number(item.lockedPrice),
     qtyKg: Number(item.qtyKg),
   }));
 
@@ -28,7 +29,7 @@ export default async function CartPage({
       <p className="text-xs uppercase tracking-[0.3em] text-gold">Member portal</p>
       <h1 className="mt-3 font-display text-4xl text-gold max-md:text-3xl">Cart</h1>
       <p className="mt-4 text-sm text-mist">
-        Prices are locked at the board sell rate when you add MYR/KG.{" "}
+        Buy uses Super Heng SELL; sell uses Super Heng BUY (Physical Gold only).{" "}
         <Link href="/rates" className="text-gold hover:underline">
           Back to rates
         </Link>

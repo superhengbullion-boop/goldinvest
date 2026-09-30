@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getMember } from "@/lib/member-session";
 import {
+  normalizeTradeSide,
   removeCartItem,
   updateCartItemQty,
   upsertCartItem,
@@ -18,14 +19,18 @@ async function requireMember() {
 export async function addToCart(formData: FormData) {
   const member = await requireMember();
   const metal = String(formData.get("metal") ?? "").trim().toUpperCase();
-  const lockedSellPrice = Number(formData.get("lockedSellPrice"));
+  const side = normalizeTradeSide(formData.get("side"));
+  const lockedPrice = Number(formData.get("lockedPrice"));
   const qtyKg = Number(formData.get("qtyKg"));
 
   if (metal !== "XAU" && metal !== "XAG") {
     throw new Error("Invalid metal.");
   }
-  if (!Number.isFinite(lockedSellPrice) || lockedSellPrice <= 0) {
-    throw new Error("Sell price is unavailable. Refresh rates and try again.");
+  if (side === "sell" && metal !== "XAU") {
+    throw new Error("Sell is only available for Physical Gold 999 - MYR/KG.");
+  }
+  if (!Number.isFinite(lockedPrice) || lockedPrice <= 0) {
+    throw new Error("Price is unavailable. Refresh rates and try again.");
   }
   if (!Number.isFinite(qtyKg) || qtyKg <= 0) {
     throw new Error("Enter a quantity greater than zero.");
@@ -34,7 +39,8 @@ export async function addToCart(formData: FormData) {
   await upsertCartItem({
     memberId: member.id,
     metal,
-    lockedSellPrice,
+    side,
+    lockedPrice,
     qtyKg,
   });
 

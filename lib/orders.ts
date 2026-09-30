@@ -2,15 +2,25 @@ import "server-only";
 import { getPool, execute, query, queryOne, newId } from "@/lib/db";
 import { getZonedNow } from "@/lib/rate-time";
 import { metalLabel } from "@/lib/metal-quotes";
-import { lineTotalMyr, normalizeHistoryLimit, ORDER_STATUSES, type OrderStatus } from "@/lib/order-math";
+import {
+  lineTotalMyr,
+  normalizeHistoryLimit,
+  normalizeTradeSide,
+  ORDER_STATUSES,
+  tradeSideLabel,
+  type OrderStatus,
+  type TradeSide,
+} from "@/lib/order-math";
 
 export {
   lineTotalMyr,
   HISTORY_PAGE_LIMITS,
   normalizeHistoryLimit,
+  normalizeTradeSide,
   ORDER_STATUSES,
+  tradeSideLabel,
 } from "@/lib/order-math";
-export type { OrderStatus } from "@/lib/order-math";
+export type { OrderStatus, TradeSide } from "@/lib/order-math";
 export const CART_UNIT_KEY = "myr-kg";
 
 export type CartItemRow = {
@@ -18,7 +28,8 @@ export type CartItemRow = {
   memberId: number;
   metal: string;
   unitKey: string;
-  lockedSellPrice: string | number;
+  side: string;
+  lockedPrice: string | number;
   qtyKg: string | number;
   createdAt: Date;
   updatedAt: Date;
@@ -29,7 +40,8 @@ export type OrderItemRow = {
   orderId: string;
   metal: string;
   unitKey: string;
-  lockedSellPrice: string | number;
+  side: string;
+  lockedPrice: string | number;
   qtyKg: string | number;
   lineTotal: string | number;
 };
@@ -77,33 +89,39 @@ export async function getCartItemCount(memberId: number): Promise<number> {
 export async function upsertCartItem(input: {
   memberId: number;
   metal: string;
-  lockedSellPrice: number;
+  side: TradeSide;
+  lockedPrice: number;
   qtyKg: number;
 }) {
   const metal = input.metal === "XAG" ? "XAG" : "XAU";
-  if (!(input.lockedSellPrice > 0) || !(input.qtyKg > 0)) {
+  const side = normalizeTradeSide(input.side);
+
+  if (side === "sell" && metal !== "XAU") {
+    throw new Error("Sell is only available for Physical Gold 999 - MYR/KG.");
+  }
+  if (!(input.lockedPrice > 0) || !(input.qtyKg > 0)) {
     throw new Error("Price and quantity must be greater than zero.");
   }
 
   const existing = await queryOne<CartItemRow>(
-    "SELECT * FROM `CartItem` WHERE `memberId`=? AND `metal`=? AND `unitKey`=? LIMIT 1",
-    [input.memberId, metal, CART_UNIT_KEY],
+    "SELECT * FROM `CartItem` WHERE `memberId`=? AND `metal`=? AND `unitKey`=? AND `side`=? LIMIT 1",
+    [input.memberId, metal, CART_UNIT_KEY, side],
   );
 
   if (existing) {
     const nextQty = num(existing.qtyKg) + input.qtyKg;
     await execute(
-      "UPDATE `CartItem` SET `lockedSellPrice`=?,`qtyKg`=?,`updatedAt`=NOW(3) WHERE `id`=?",
-      [input.lockedSellPrice, nextQty, existing.id],
+      "UPDATE `CartItem` SET `lockedPrice`=?,`qtyKg`=?,`updatedAt`=NOW(3) WHERE `id`=?",
+      [input.lockedPrice, nextQty, existing.id],
     );
     return existing.id;
   }
 
   const id = newId();
   await execute(
-    `INSERT INTO \`CartItem\`(\`id\`,\`memberId\`,\`metal\`,\`unitKey\`,\`lockedSellPrice\`,\`qtyKg\`,\`createdAt\`,\`updatedAt\`)
-     VALUES(?,?,?,?,?,?,NOW(3),NOW(3))`,
-    [id, input.memberId, metal, CART_UNIT_KEY, input.lockedSellPrice, input.qtyKg],
+    `INSERT INTO \`CartItem\`(\`id\`,\`memberId\`,\`metal\`,\`unitKey\`,\`side\`,\`lockedPrice\`,\`qtyKg\`,\`createdAt\`,\`updatedAt\`)
+     VALUES(?,?,?,?,?,?,?,NOW(3),NOW(3))`,
+    [id, input.memberId, metal, CART_UNIT_KEY, side, input.lockedPrice, input.qtyKg],
   );
   return id;
 }
@@ -139,14 +157,16 @@ export async function placeOrder(memberId: number): Promise<OrderWithItems> {
   if (cart.length === 0) throw new Error("Your cart is empty.");
 
   const items = cart.map((item) => {
-    const lockedSellPrice = num(item.lockedSellPrice);
+    const lockedPrice = num(item.lockedPrice);
     const qtyKg = num(item.qtyKg);
+    const side = normalizeTradeSide(item.side);
     return {
       metal: item.metal,
       unitKey: item.unitKey,
-      lockedSellPrice,
+      side,
+      lockedPrice,
       qtyKg,
-      lineTotal: lineTotalMyr(lockedSellPrice, qtyKg),
+      lineTotal: lineTotalMyr(lockedPrice, qtyKg),
     };
   });
   const totalAmount = Math.round(items.reduce((sum, item) => sum + item.lineTotal, 0) * 100) / 100;
@@ -165,9 +185,18 @@ export async function placeOrder(memberId: number): Promise<OrderWithItems> {
 
     for (const item of items) {
       await conn.query(
-        `INSERT INTO \`OrderItem\`(\`id\`,\`orderId\`,\`metal\`,\`unitKey\`,\`lockedSellPrice\`,\`qtyKg\`,\`lineTotal\`)
-         VALUES(?,?,?,?,?,?,?)`,
-        [newId(), orderId, item.metal, item.unitKey, item.lockedSellPrice, item.qtyKg, item.lineTotal],
+        `INSERT INTO \`OrderItem\`(\`id\`,\`orderId\`,\`metal\`,\`unitKey\`,\`side\`,\`lockedPrice\`,\`qtyKg\`,\`lineTotal\`)
+         VALUES(?,?,?,?,?,?,?,?)`,
+        [
+          newId(),
+          orderId,
+          item.metal,
+          item.unitKey,
+          item.side,
+          item.lockedPrice,
+          item.qtyKg,
+          item.lineTotal,
+        ],
       );
     }
 
@@ -187,7 +216,8 @@ export async function placeOrder(memberId: number): Promise<OrderWithItems> {
         orderId,
         metal: item.metal,
         unitKey: item.unitKey,
-        lockedSellPrice: item.lockedSellPrice,
+        side: item.side,
+        lockedPrice: item.lockedPrice,
         qtyKg: item.qtyKg,
         lineTotal: item.lineTotal,
       })),
@@ -202,7 +232,10 @@ export async function placeOrder(memberId: number): Promise<OrderWithItems> {
 
 export function summarizeOrderItems(items: OrderItemRow[]) {
   return items
-    .map((item) => `${metalLabel(item.metal)} ${num(item.qtyKg)} kg`)
+    .map(
+      (item) =>
+        `${tradeSideLabel(item.side)} ${metalLabel(item.metal)} ${num(item.qtyKg)} kg`,
+    )
     .join(", ");
 }
 

@@ -1,5 +1,16 @@
-export function lineTotalMyr(lockedSellPrice: number, qtyKg: number) {
-  return Math.round(lockedSellPrice * qtyKg * 100) / 100;
+export function lineTotalMyr(lockedPrice: number, qtyKg: number) {
+  return Math.round(lockedPrice * qtyKg * 100) / 100;
+}
+
+export const TRADE_SIDES = ["buy", "sell"] as const;
+export type TradeSide = (typeof TRADE_SIDES)[number];
+
+export function normalizeTradeSide(value: unknown): TradeSide {
+  return value === "sell" ? "sell" : "buy";
+}
+
+export function tradeSideLabel(side: string) {
+  return side === "sell" ? "Sell" : "Buy";
 }
 
 export const HISTORY_PAGE_LIMITS = [10, 25, 50] as const;

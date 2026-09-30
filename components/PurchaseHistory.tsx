@@ -1,5 +1,6 @@
 import { formatPrice } from "@/lib/format-price";
 import { metalLabel } from "@/lib/metal-quotes";
+import { tradeSideLabel } from "@/lib/order-math";
 import type { OrderWithItems } from "@/lib/orders";
 
 function statusLabel(status: string) {
@@ -21,7 +22,7 @@ function statusClass(status: string) {
 
 export function PurchaseHistory({ orders }: { orders: OrderWithItems[] }) {
   if (orders.length === 0) {
-    return <p className="text-mist">No purchases yet.</p>;
+    return <p className="text-mist">No orders yet.</p>;
   }
 
   return (
@@ -45,12 +46,12 @@ export function PurchaseHistory({ orders }: { orders: OrderWithItems[] }) {
           <ul className="mt-3 space-y-1 text-sm text-ivory/90">
             {order.items.map((item) => (
               <li
-                key={item.id || `${order.id}-${item.metal}`}
+                key={item.id || `${order.id}-${item.side}-${item.metal}`}
                 className="flex flex-wrap justify-between gap-2"
               >
                 <span>
-                  {metalLabel(item.metal)} · {Number(item.qtyKg)} kg @ RM{" "}
-                  {formatPrice(item.lockedSellPrice, 0)} / kg
+                  {tradeSideLabel(item.side)} · {metalLabel(item.metal)} · {Number(item.qtyKg)} kg @
+                  RM {formatPrice(item.lockedPrice, 0)} / kg
                 </span>
                 <span className="tabular-nums text-mist">
                   RM {formatPrice(item.lineTotal, 2)}

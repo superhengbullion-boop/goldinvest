@@ -5,12 +5,13 @@ import { removeFromCart, updateCartQty } from "@/app/actions/cart";
 import { placeCartOrder } from "@/app/actions/orders";
 import { formatPrice } from "@/lib/format-price";
 import { metalLabel } from "@/lib/metal-quotes";
-import { lineTotalMyr } from "@/lib/order-math";
+import { lineTotalMyr, tradeSideLabel } from "@/lib/order-math";
 
 type CartLine = {
   id: string;
   metal: string;
-  lockedSellPrice: number;
+  side: string;
+  lockedPrice: number;
   qtyKg: number;
 };
 
@@ -49,7 +50,7 @@ export function CartPanel({
   placedOrderNo?: string | null;
 }) {
   const grandTotal = items.reduce(
-    (sum, item) => sum + lineTotalMyr(item.lockedSellPrice, item.qtyKg),
+    (sum, item) => sum + lineTotalMyr(item.lockedPrice, item.qtyKg),
     0,
   );
 
@@ -62,18 +63,22 @@ export function CartPanel({
       ) : null}
 
       {items.length === 0 ? (
-        <p className="text-mist">Your cart is empty. Buy MYR/KG from the rates board to add items.</p>
+        <p className="text-mist">Your cart is empty. Buy or sell MYR/KG from the rates board to add items.</p>
       ) : (
         <>
           <ul className="divide-y divide-white/10 border-y border-white/10">
             {items.map((item) => {
-              const lineTotal = lineTotalMyr(item.lockedSellPrice, item.qtyKg);
+              const lineTotal = lineTotalMyr(item.lockedPrice, item.qtyKg);
+              const side = tradeSideLabel(item.side);
+              const lockLabel = item.side === "sell" ? "Super Heng BUY" : "Super Heng SELL";
               return (
                 <li key={item.id} className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="font-display text-xl text-gold">{metalLabel(item.metal)}</p>
+                    <p className="font-display text-xl text-gold">
+                      {side} · {metalLabel(item.metal)}
+                    </p>
                     <p className="mt-1 text-sm text-mist">
-                      Locked sell RM {formatPrice(item.lockedSellPrice, 0)} / kg · MYR/KG
+                      Locked {lockLabel} RM {formatPrice(item.lockedPrice, 0)} / kg · MYR/KG
                     </p>
                     <p className="mt-2 text-sm tabular-nums">
                       Line total: RM {formatPrice(lineTotal, 2)}

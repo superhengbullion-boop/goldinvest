@@ -4,32 +4,37 @@ import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { addToCart } from "@/app/actions/cart";
 import { Toast } from "@/components/Toast";
+import type { TradeSide } from "@/lib/order-math";
 
-function BuySubmit() {
+function TradeSubmit({ side }: { side: TradeSide }) {
   const { pending } = useFormStatus();
+  const label = side === "sell" ? "LOCK SELL" : "LOCK BUY";
   return (
     <button
       type="submit"
       disabled={pending}
-      className="gold-btn px-6 py-2 text-sm font-semibold uppercase tracking-wide disabled:opacity-60"
+      className="inline-flex items-center justify-center rounded-full bg-gold px-3 py-1.5 text-[11px] font-semibold uppercase leading-none tracking-wide text-white transition-colors hover:bg-gold-dark disabled:opacity-60 max-md:px-2.5 max-md:py-1 max-md:text-[10px]"
     >
-      {pending ? "Adding…" : "Buy"}
+      {pending ? "…" : label}
     </button>
   );
 }
 
-export function BuyKgButton({
+export function TradeKgButton({
   metal,
-  sellPrice,
+  side,
+  lockedPrice,
 }: {
   metal: "XAU" | "XAG";
-  sellPrice: number;
+  side: TradeSide;
+  lockedPrice: number;
   digits?: number;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  if (!Number.isFinite(sellPrice) || sellPrice <= 0) return null;
+  if (!Number.isFinite(lockedPrice) || lockedPrice <= 0) return null;
+  if (side === "sell" && metal !== "XAU") return null;
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -46,9 +51,10 @@ export function BuyKgButton({
         }}
       >
         <input type="hidden" name="metal" value={metal} />
-        <input type="hidden" name="lockedSellPrice" value={String(sellPrice)} />
+        <input type="hidden" name="side" value={side} />
+        <input type="hidden" name="lockedPrice" value={String(lockedPrice)} />
         <input type="hidden" name="qtyKg" value="1" />
-        <BuySubmit />
+        <TradeSubmit side={side} />
       </form>
       {error ? <p className="text-xs text-red-400">{error}</p> : null}
       <Toast
@@ -58,4 +64,16 @@ export function BuyKgButton({
       />
     </div>
   );
+}
+
+/** @deprecated Prefer TradeKgButton */
+export function BuyKgButton({
+  metal,
+  sellPrice,
+}: {
+  metal: "XAU" | "XAG";
+  sellPrice: number;
+  digits?: number;
+}) {
+  return <TradeKgButton metal={metal} side="buy" lockedPrice={sellPrice} />;
 }

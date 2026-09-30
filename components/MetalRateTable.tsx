@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BuyKgButton } from "@/components/BuyKgButton";
+import { TradeKgButton } from "@/components/BuyKgButton";
 import { formatPrice } from "@/lib/format-price";
 import type { BoardRow } from "@/lib/metal-quotes";
 import { formatRateStamp } from "@/lib/rate-time";
@@ -33,7 +33,7 @@ function PriceCell({ value, digits }: { value: number; digits: number }) {
   );
 }
 
-const BUY_METAL_BY_ROW_KEY: Record<string, "XAU" | "XAG"> = {
+const TRADE_METAL_BY_ROW_KEY: Record<string, "XAU" | "XAG"> = {
   "physical-gold-myr-kg": "XAU",
   "physical-silver-myr-kg": "XAG",
 };
@@ -44,14 +44,14 @@ export function MetalRateTable({
   titleLabel = "HENG Precious Metals",
   buyLabel = "Super Heng BUY",
   sellLabel = "Super Heng SELL",
-  enableBuy = false,
+  enableTrade = false,
 }: {
   rows: BoardRow[];
   updatedAt: Date | null;
   titleLabel?: string;
   buyLabel?: string;
   sellLabel?: string;
-  enableBuy?: boolean;
+  enableTrade?: boolean;
 }) {
   return (
     <div>
@@ -73,7 +73,7 @@ export function MetalRateTable({
               <th className="px-4 py-3 text-right font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">
                 {sellLabel}
               </th>
-              {enableBuy ? (
+              {enableTrade ? (
                 <th className="px-4 py-3 text-center font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">
                   Action
                 </th>
@@ -82,7 +82,9 @@ export function MetalRateTable({
           </thead>
           <tbody>
             {rows.map((row) => {
-              const buyMetal = BUY_METAL_BY_ROW_KEY[row.key];
+              const metal = TRADE_METAL_BY_ROW_KEY[row.key];
+              const canBuy = Boolean(metal);
+              const canSell = metal === "XAU";
               return (
                 <tr key={row.key} className="border-t border-white/10">
                   <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">{row.label}</td>
@@ -99,10 +101,17 @@ export function MetalRateTable({
                       <PriceCell value={row.sell} digits={row.digits} />
                     </>
                   )}
-                  {enableBuy ? (
-                    <td className="px-4 py-3 text-center max-md:px-2 max-md:py-2 max-md:text-sm">
-                      {buyMetal ? (
-                        <BuyKgButton metal={buyMetal} sellPrice={row.sell} digits={row.digits} />
+                  {enableTrade ? (
+                    <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">
+                      {metal && !row.comingSoon ? (
+                        <div className="flex flex-wrap items-start justify-center gap-2 max-md:gap-1">
+                          {canBuy ? (
+                            <TradeKgButton metal={metal} side="buy" lockedPrice={row.sell} />
+                          ) : null}
+                          {canSell ? (
+                            <TradeKgButton metal={metal} side="sell" lockedPrice={row.buy} />
+                          ) : null}
+                        </div>
                       ) : null}
                     </td>
                   ) : null}
