@@ -40,7 +40,6 @@ export async function addToCart(formData: FormData) {
 
   revalidatePath("/portal/cart");
   revalidatePath("/", "layout");
-  redirect("/portal/cart");
 }
 
 export async function updateCartQty(formData: FormData) {

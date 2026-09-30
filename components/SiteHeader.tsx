@@ -31,16 +31,45 @@ export function SiteHeader({
     <header className="relative z-40">
       <div className="flex items-center justify-between px-[5%] py-4 lg:hidden">
         <Logo src={logo} name={siteName} />
-        <button
-          type="button"
-          aria-label="Open menu"
-          className="p-3 text-ivory"
-          onClick={() => setOpen((v) => !v)}
-        >
-          <span className="mb-1.5 block h-0.5 w-6 bg-gold" />
-          <span className="mb-1.5 block h-0.5 w-6 bg-gold" />
-          <span className="block h-0.5 w-6 bg-gold" />
-        </button>
+        <div className="flex items-center gap-2">
+          {accountName ? (
+            <Link
+              href="/portal/cart"
+              aria-label="Cart"
+              className="relative p-3 text-ivory"
+              onClick={() => setOpen(false)}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-6 w-6 text-gold"
+                aria-hidden="true"
+              >
+                <path d="M6 8h12l-1.2 11.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 8Z" />
+                <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+              </svg>
+              {cartCount > 0 ? (
+                <span className="absolute top-1 right-1 inline-flex min-w-4 items-center justify-center rounded-full bg-gold px-1 py-0.5 text-[10px] font-semibold tabular-nums text-black">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              ) : null}
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            aria-label="Open menu"
+            className="p-3 text-ivory"
+            onClick={() => setOpen((v) => !v)}
+          >
+            <span className="mb-1.5 block h-0.5 w-6 bg-gold" />
+            <span className="mb-1.5 block h-0.5 w-6 bg-gold" />
+            <span className="block h-0.5 w-6 bg-gold" />
+          </button>
+        </div>
       </div>
 
       {open ? (

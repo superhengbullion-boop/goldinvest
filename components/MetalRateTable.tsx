@@ -73,6 +73,11 @@ export function MetalRateTable({
               <th className="px-4 py-3 text-right font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">
                 {sellLabel}
               </th>
+              {enableBuy ? (
+                <th className="px-4 py-3 text-center font-semibold max-md:px-2 max-md:py-2 max-md:text-sm">
+                  Action
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -80,12 +85,7 @@ export function MetalRateTable({
               const buyMetal = BUY_METAL_BY_ROW_KEY[row.key];
               return (
                 <tr key={row.key} className="border-t border-white/10">
-                  <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">
-                    {row.label}
-                    {enableBuy && buyMetal ? (
-                      <BuyKgButton metal={buyMetal} sellPrice={row.sell} digits={row.digits} />
-                    ) : null}
-                  </td>
+                  <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">{row.label}</td>
                   {row.comingSoon ? (
                     <td
                       colSpan={2}
@@ -99,6 +99,13 @@ export function MetalRateTable({
                       <PriceCell value={row.sell} digits={row.digits} />
                     </>
                   )}
+                  {enableBuy ? (
+                    <td className="px-4 py-3 text-center max-md:px-2 max-md:py-2 max-md:text-sm">
+                      {buyMetal ? (
+                        <BuyKgButton metal={buyMetal} sellPrice={row.sell} digits={row.digits} />
+                      ) : null}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
