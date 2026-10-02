@@ -5,6 +5,7 @@ import { asBool, execute, isDuplicateKey, newId, query, queryOne } from "@/lib/d
 import { getSession } from "@/lib/session";
 import { isPageSlug, PAGE_META } from "@/lib/cms";
 import { sanitizePageContent } from "@/lib/richtext";
+import { APP_CONTENT_SLUG, DEFAULT_APP_CONTENT, appLabelText } from "@/lib/app-content";
 import { SITE_SETTINGS_SLUG } from "@/lib/seo";
 import { MANUAL_RATES_SLUG } from "@/lib/metal-quotes";
 import type { RateBookAdjRow } from "@/lib/data";
@@ -64,6 +65,31 @@ export async function updateSiteSettings(formData: FormData) {
   revalidatePath("/", "layout");
   revalidatePath("/admin/settings");
   revalidatePath("/admin/login");
+}
+
+function appLabel(formData: FormData, name: keyof typeof DEFAULT_APP_CONTENT) {
+  return appLabelText(formData.get(name), DEFAULT_APP_CONTENT[name]);
+}
+
+export async function updateAppContent(formData: FormData) {
+  await requireAdmin();
+  const content = {
+    logo: String(formData.get("logo") ?? "").trim(),
+    ratesTitle: appLabel(formData, "ratesTitle"),
+    infoLabel: appLabel(formData, "infoLabel"),
+    buyLabel: appLabel(formData, "buyLabel"),
+    sellLabel: appLabel(formData, "sellLabel"),
+    lockBuyLabel: appLabel(formData, "lockBuyLabel"),
+    lockSellLabel: appLabel(formData, "lockSellLabel"),
+    comingSoonLabel: appLabel(formData, "comingSoonLabel"),
+  };
+  await execute(
+    `INSERT INTO \`Page\`(\`id\`,\`slug\`,\`title\`,\`description\`,\`content\`,\`createdAt\`,\`updatedAt\`)
+     VALUES(?,?,?,?,?,NOW(3),NOW(3))
+     ON DUPLICATE KEY UPDATE \`content\`=VALUES(\`content\`),\`updatedAt\`=NOW(3)`,
+    [newId(), APP_CONTENT_SLUG, "App content", "Mobile app logo and labels", JSON.stringify(content)],
+  );
+  revalidatePath("/admin/app");
 }
 
 export async function saveManualFxRates(formData: FormData) {

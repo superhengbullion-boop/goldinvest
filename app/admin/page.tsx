@@ -50,7 +50,7 @@ export default async function AdminHome() {
 
 			<h2 className='mt-12 font-display text-2xl'>Pages</h2>
 			<div className='mt-4 divide-y divide-gold/15 rounded-xl border border-gold/25'>
-				{pages.filter((page) => page.slug !== "settings" && page.slug !== "manual-rates").map((page) => {
+				{pages.filter((page) => page.slug !== "settings" && page.slug !== "manual-rates" && page.slug !== "app").map((page) => {
 					const label = isPageSlug(page.slug)
 						? PAGE_META[page.slug].cmsLabel
 						: page.title;

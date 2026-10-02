@@ -1,7 +1,8 @@
 "use server";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
-import { asBool, execute, queryOne } from "@/lib/db";
+import { asBool, queryOne } from "@/lib/db";
+import { saveMemberProfile } from "@/lib/member-profile";
 import { createMemberSession, deleteMemberSession, getMember } from "@/lib/member-session";
 import type { AuthFormState } from "@/lib/types";
 
@@ -44,31 +45,13 @@ export async function updateMemberProfile(
   const member = await getMember();
   if (!member) redirect("/login");
 
-  const username = String(formData.get("username")        ?? "").trim();
-  const fullName = String(formData.get("fullName")        ?? "").trim();
-  const password = String(formData.get("password")        ?? "");
-  const confirm  = String(formData.get("confirmPassword") ?? "");
-
-  if (!username || !fullName) return { error: "Username and full name are required." };
-  if (username.length < 3)    return { error: "Username must be at least 3 characters." };
-  if (password && password !== confirm) return { error: "New passwords do not match." };
-  if (password && password.length < 6) return { error: "Password must be at least 6 characters." };
-
-  const taken = await queryOne<{ id: number }>(
-    "SELECT `id` FROM `Member` WHERE `username`=? AND `id`<>? LIMIT 1", [username, member.id],
-  );
-  if (taken) return { error: "That username is already taken." };
-
-  if (password) {
-    await execute(
-      "UPDATE `Member` SET `username`=?,`fullName`=?,`passwordHash`=?,`updatedAt`=NOW(3) WHERE `id`=?",
-      [username, fullName, await bcrypt.hash(password, 12), member.id],
-    );
-  } else {
-    await execute(
-      "UPDATE `Member` SET `username`=?,`fullName`=?,`updatedAt`=NOW(3) WHERE `id`=?",
-      [username, fullName, member.id],
-    );
-  }
+  const result = await saveMemberProfile({
+    id: member.id,
+    username: String(formData.get("username") ?? ""),
+    fullName: String(formData.get("fullName") ?? ""),
+    password: String(formData.get("password") ?? ""),
+    confirmPassword: String(formData.get("confirmPassword") ?? ""),
+  });
+  if ("error" in result) return result;
   return { ok: "Profile updated." };
 }
