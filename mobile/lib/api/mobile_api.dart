@@ -168,7 +168,10 @@ class HistoryOrder {
       totalAmount: _num(json['totalAmount']),
       createdAt: stamp is String ? DateTime.tryParse(stamp) : null,
       items: raw is List
-          ? raw.map((item) => HistoryItem.fromJson(Map<String, dynamic>.from(item as Map))).toList()
+          ? raw
+              .map((item) =>
+                  HistoryItem.fromJson(Map<String, dynamic>.from(item as Map)))
+              .toList()
           : const [],
     );
   }
@@ -193,7 +196,10 @@ class OrdersPage {
     final raw = json['orders'];
     return OrdersPage(
       orders: raw is List
-          ? raw.map((order) => HistoryOrder.fromJson(Map<String, dynamic>.from(order as Map))).toList()
+          ? raw
+              .map((order) => HistoryOrder.fromJson(
+                  Map<String, dynamic>.from(order as Map)))
+              .toList()
           : const [],
       total: (json['total'] as num?)?.toInt() ?? 0,
       page: (json['page'] as num?)?.toInt() ?? 1,
@@ -257,7 +263,8 @@ class AppCopy {
 }
 
 class CompanyOffice {
-  const CompanyOffice({required this.name, required this.address, required this.mapEmbedUrl});
+  const CompanyOffice(
+      {required this.name, required this.address, required this.mapEmbedUrl});
 
   final String name;
   final String address;
@@ -265,9 +272,14 @@ class CompanyOffice {
 
   factory CompanyOffice.fromJson(Map<String, dynamic> json) {
     return CompanyOffice(
-      name: json['name'] is String && (json['name'] as String).trim().isNotEmpty ? (json['name'] as String).trim() : 'Office',
-      address: json['address'] is String ? (json['address'] as String).trim() : '',
-      mapEmbedUrl: json['mapEmbedUrl'] is String ? (json['mapEmbedUrl'] as String).trim() : '',
+      name: json['name'] is String && (json['name'] as String).trim().isNotEmpty
+          ? (json['name'] as String).trim()
+          : 'Office',
+      address:
+          json['address'] is String ? (json['address'] as String).trim() : '',
+      mapEmbedUrl: json['mapEmbedUrl'] is String
+          ? (json['mapEmbedUrl'] as String).trim()
+          : '',
     );
   }
 }
@@ -304,14 +316,16 @@ class CompanyInfo {
     website: 'https://superhengbullion.com.my',
     aboutUrl: 'https://superhengbullion.com.my/about',
     termsUrl: 'https://superhengbullion.com.my/terms',
-    address: 'No 7, Jalan PPU 2A,\nTaman Perindustrian Puchong Utama,\n47100 Puchong, Selangor.',
+    address:
+        'No 7, Jalan PPU 2A,\nTaman Perindustrian Puchong Utama,\n47100 Puchong, Selangor.',
     hours: 'Office Operating Hours: 9.00am - 6.00pm (Monday - Friday)',
     mapEmbedUrl:
         'https://maps.google.com/maps?q=No%207%2C%20Jalan%20PPU%202A%2C%20Taman%20Perindustrian%20Puchong%20Utama%2C%2047100%20Puchong%2C%20Selangor&hl=en&z=16&output=embed',
     offices: [
       CompanyOffice(
         name: 'Headquarters',
-        address: 'No 7, Jalan PPU 2A,\nTaman Perindustrian Puchong Utama,\n47100 Puchong, Selangor.',
+        address:
+            'No 7, Jalan PPU 2A,\nTaman Perindustrian Puchong Utama,\n47100 Puchong, Selangor.',
         mapEmbedUrl:
             'https://maps.google.com/maps?q=No%207%2C%20Jalan%20PPU%202A%2C%20Taman%20Perindustrian%20Puchong%20Utama%2C%2047100%20Puchong%2C%20Selangor&hl=en&z=16&output=embed',
       ),
@@ -331,7 +345,8 @@ class CompanyInfo {
     final offices = rawOffices is List
         ? rawOffices
             .whereType<Map>()
-            .map((office) => CompanyOffice.fromJson(Map<String, dynamic>.from(office)))
+            .map((office) =>
+                CompanyOffice.fromJson(Map<String, dynamic>.from(office)))
             .where((office) => office.address.isNotEmpty)
             .toList()
         : <CompanyOffice>[];
@@ -347,7 +362,10 @@ class CompanyInfo {
       hours: pick('hours', fallback.hours),
       mapEmbedUrl: mapEmbedUrl,
       offices: offices.isEmpty
-          ? [CompanyOffice(name: 'Office', address: address, mapEmbedUrl: mapEmbedUrl)]
+          ? [
+              CompanyOffice(
+                  name: 'Office', address: address, mapEmbedUrl: mapEmbedUrl)
+            ]
           : offices,
     );
   }
@@ -361,7 +379,10 @@ class CartResult {
   factory CartResult.fromJson(Map<String, dynamic> json) {
     final raw = json['items'];
     final items = raw is List
-        ? raw.map((item) => CartLine.fromJson(Map<String, dynamic>.from(item as Map))).toList()
+        ? raw
+            .map((item) =>
+                CartLine.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList()
         : <CartLine>[];
     return CartResult(items: items, grandTotal: _num(json['grandTotal']));
   }
@@ -375,7 +396,9 @@ double _num(Object? value) {
 /// Talks to the gold-invest mobile API.
 /// The Android emulator reaches the host machine at 10.0.2.2.
 class MobileApi {
-  MobileApi({http.Client? client, this.baseUrl = 'http://10.0.2.2:3000'}) : _client = client ?? http.Client();
+  MobileApi(
+      {http.Client? client, this.baseUrl = 'https://superhengbullion.com.my'})
+      : _client = client ?? http.Client();
 
   final http.Client _client;
   final String baseUrl;
@@ -416,10 +439,14 @@ class MobileApi {
   Future<RatesResult> fetchRates(String token) async {
     final json = await _send('GET', '/api/mobile/rates', token: token);
     final board = json['board'];
-    final boardMap = board is Map ? Map<String, dynamic>.from(board) : <String, dynamic>{};
+    final boardMap =
+        board is Map ? Map<String, dynamic>.from(board) : <String, dynamic>{};
     final rawRows = boardMap['rows'];
     final rows = rawRows is List
-        ? rawRows.map((row) => RateRow.fromJson(Map<String, dynamic>.from(row as Map))).toList()
+        ? rawRows
+            .map((row) =>
+                RateRow.fromJson(Map<String, dynamic>.from(row as Map)))
+            .toList()
         : <RateRow>[];
     final stamp = boardMap['updatedAt'];
     return RatesResult(
@@ -440,8 +467,11 @@ class MobileApi {
     return CompanyInfo.fromJson(json);
   }
 
-  Future<OrdersPage> fetchOrders(String token, {int page = 1, int limit = 10}) async {
-    final json = await _send('GET', '/api/mobile/orders?page=$page&limit=$limit', token: token);
+  Future<OrdersPage> fetchOrders(String token,
+      {int page = 1, int limit = 10}) async {
+    final json = await _send(
+        'GET', '/api/mobile/orders?page=$page&limit=$limit',
+        token: token);
     return OrdersPage.fromJson(json);
   }
 
@@ -467,7 +497,8 @@ class MobileApi {
   }
 
   Future<CartResult> updateQty(String token, String id, double qtyKg) async {
-    final json = await _send('PATCH', '/api/mobile/cart/$id', token: token, body: {'qtyKg': qtyKg});
+    final json = await _send('PATCH', '/api/mobile/cart/$id',
+        token: token, body: {'qtyKg': qtyKg});
     return CartResult.fromJson(json);
   }
 
@@ -494,8 +525,10 @@ class MobileApi {
     try {
       final uri = Uri.parse('$baseUrl$path');
       response = await switch (method) {
-        'POST' => _client.post(uri, headers: headers, body: body == null ? null : jsonEncode(body)),
-        'PATCH' => _client.patch(uri, headers: headers, body: body == null ? null : jsonEncode(body)),
+        'POST' => _client.post(uri,
+            headers: headers, body: body == null ? null : jsonEncode(body)),
+        'PATCH' => _client.patch(uri,
+            headers: headers, body: body == null ? null : jsonEncode(body)),
         'DELETE' => _client.delete(uri, headers: headers),
         _ => _client.get(uri, headers: headers),
       };
@@ -508,7 +541,8 @@ class MobileApi {
       if (decoded is Map) json = Map<String, dynamic>.from(decoded);
     }
     if (response.statusCode >= 400) {
-      throw ApiException(response.statusCode, '${json['error'] ?? 'Request failed.'}');
+      throw ApiException(
+          response.statusCode, '${json['error'] ?? 'Request failed.'}');
     }
     return json;
   }
