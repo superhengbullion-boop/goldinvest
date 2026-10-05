@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:gold_invest/app_content.dart';
-import 'package:gold_invest/session.dart';
-import 'package:gold_invest/shell/app_shell.dart';
-import 'package:gold_invest/splash/launch_splash.dart';
-import 'package:gold_invest/splash/splash_logo.dart';
-import 'package:gold_invest/theme/app_theme.dart';
+import 'package:super_heng_bullion/app_content.dart';
+import 'package:super_heng_bullion/session.dart';
+import 'package:super_heng_bullion/shell/app_shell.dart';
+import 'package:super_heng_bullion/splash/launch_splash.dart';
+import 'package:super_heng_bullion/splash/splash_logo.dart';
+import 'package:super_heng_bullion/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,7 +55,7 @@ class _GoldInvestAppState extends State<GoldInvestApp> {
       child: SessionScope(
         controller: _session,
         child: MaterialApp(
-          title: 'Gold Invest',
+          title: 'SuperHeng Bullion',
           debugShowCheckedModeBanner: false,
           theme: buildAppTheme(),
           home: widget.showSplash

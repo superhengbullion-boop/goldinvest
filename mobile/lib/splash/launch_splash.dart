@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:gold_invest/theme/app_theme.dart';
+import 'package:super_heng_bullion/theme/app_theme.dart';
 
 class LaunchSplash extends StatefulWidget {
   const LaunchSplash({super.key, required this.logoPath, required this.child});

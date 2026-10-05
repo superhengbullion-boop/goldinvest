@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:gold_invest/api/mobile_api.dart';
-import 'package:gold_invest/app_content.dart';
-import 'package:gold_invest/session.dart';
-import 'package:gold_invest/theme/app_theme.dart';
+import 'package:super_heng_bullion/api/mobile_api.dart';
+import 'package:super_heng_bullion/app_content.dart';
+import 'package:super_heng_bullion/session.dart';
+import 'package:super_heng_bullion/theme/app_theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';

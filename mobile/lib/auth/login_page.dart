@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:gold_invest/api/mobile_api.dart';
-import 'package:gold_invest/session.dart';
-import 'package:gold_invest/theme/app_theme.dart';
+import 'package:super_heng_bullion/api/mobile_api.dart';
+import 'package:super_heng_bullion/session.dart';
+import 'package:super_heng_bullion/theme/app_theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -35,7 +35,8 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _pending = true);
     try {
       final session = SessionScope.of(context);
-      final result = await session.api.login(_username.text.trim(), _password.text);
+      final result =
+          await session.api.login(_username.text.trim(), _password.text);
       await session.applyLogin(result.token, result.profile);
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -59,11 +60,12 @@ class _LoginPageState extends State<LoginPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
           children: [
-            Text('GOLD INVEST', style: text.labelSmall),
+            Text('SUPER HENG BULLION', style: text.labelSmall),
             const SizedBox(height: 28),
             Text('MEMBER', style: text.labelSmall),
             const SizedBox(height: 12),
-            Text('Sign in', key: const Key('login-title'), style: text.headlineLarge),
+            Text('Sign in',
+                key: const Key('login-title'), style: text.headlineLarge),
             const SizedBox(height: 8),
             Text(
               'Use your username and password to view rates and manage your profile.',
@@ -82,7 +84,8 @@ class _LoginPageState extends State<LoginPage> {
             if (_submitted && _username.text.trim().isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 6),
-                child: Text('Required', style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                child: Text('Required',
+                    style: TextStyle(color: AppColors.danger, fontSize: 13)),
               ),
             const SizedBox(height: 18),
             Text('Password', style: text.bodySmall),
@@ -97,7 +100,9 @@ class _LoginPageState extends State<LoginPage> {
                 suffixIcon: IconButton(
                   key: const Key('toggle-password'),
                   onPressed: () => setState(() => _obscure = !_obscure),
-                  icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                  icon: Icon(_obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined),
                   color: AppColors.mist,
                 ),
               ),
@@ -105,11 +110,14 @@ class _LoginPageState extends State<LoginPage> {
             if (_submitted && _password.text.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 6),
-                child: Text('Required', style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                child: Text('Required',
+                    style: TextStyle(color: AppColors.danger, fontSize: 13)),
               ),
             if (_error != null) ...[
               const SizedBox(height: 16),
-              Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 14)),
+              Text(_error!,
+                  style:
+                      const TextStyle(color: AppColors.danger, fontSize: 14)),
             ],
             const SizedBox(height: 28),
             FilledButton(

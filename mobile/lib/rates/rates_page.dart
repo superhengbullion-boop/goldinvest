@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:gold_invest/api/mobile_api.dart';
-import 'package:gold_invest/app_content.dart';
-import 'package:gold_invest/auth/login_page.dart';
-import 'package:gold_invest/company/company_page.dart';
-import 'package:gold_invest/format.dart';
-import 'package:gold_invest/session.dart';
-import 'package:gold_invest/theme/app_theme.dart';
+import 'package:super_heng_bullion/api/mobile_api.dart';
+import 'package:super_heng_bullion/app_content.dart';
+import 'package:super_heng_bullion/auth/login_page.dart';
+import 'package:super_heng_bullion/company/company_page.dart';
+import 'package:super_heng_bullion/format.dart';
+import 'package:super_heng_bullion/session.dart';
+import 'package:super_heng_bullion/theme/app_theme.dart';
 
 class RatesPage extends StatefulWidget {
   const RatesPage({super.key, required this.visible});

@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:gold_invest/api/mobile_api.dart';
+import 'package:super_heng_bullion/api/mobile_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SessionController extends ChangeNotifier {

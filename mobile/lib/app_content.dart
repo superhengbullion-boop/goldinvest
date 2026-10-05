@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
-import 'package:gold_invest/api/mobile_api.dart';
-import 'package:gold_invest/splash/splash_logo.dart';
+import 'package:super_heng_bullion/api/mobile_api.dart';
+import 'package:super_heng_bullion/splash/splash_logo.dart';
 
 class AppContentController extends ChangeNotifier {
   AppContentController({required this.api});

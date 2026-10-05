@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:gold_invest/account/account_page.dart';
-import 'package:gold_invest/auth/login_page.dart';
-import 'package:gold_invest/cart/cart_page.dart';
-import 'package:gold_invest/rates/rates_page.dart';
-import 'package:gold_invest/session.dart';
-import 'package:gold_invest/theme/app_theme.dart';
+import 'package:super_heng_bullion/account/account_page.dart';
+import 'package:super_heng_bullion/auth/login_page.dart';
+import 'package:super_heng_bullion/cart/cart_page.dart';
+import 'package:super_heng_bullion/rates/rates_page.dart';
+import 'package:super_heng_bullion/session.dart';
+import 'package:super_heng_bullion/theme/app_theme.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
