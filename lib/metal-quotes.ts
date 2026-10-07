@@ -110,6 +110,14 @@ export type RateAdj = {
   sellDelta: { toString(): string } | number;
 };
 
+/** Partial override: null/undefined field means inherit the base (book or 0). */
+export type MemberAdjOverride = {
+  metal: string;
+  unitKey: string;
+  buyDelta?: { toString(): string } | number | null;
+  sellDelta?: { toString(): string } | number | null;
+};
+
 export function defaultAdjustments() {
   return OFFSETTABLE_ROWS.map((row) => ({
     metal: row.metal,
@@ -117,6 +125,53 @@ export function defaultAdjustments() {
     buyDelta: 0,
     sellDelta: 0,
   }));
+}
+
+function optionalDelta(value: { toString(): string } | number | null | undefined) {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Merge book deltas with optional member overrides.
+ * Result is a full RateAdj list suitable for applyAdjustments.
+ */
+export function mergeAdjustments(
+  bookAdjustments: RateAdj[] = [],
+  memberOverrides: MemberAdjOverride[] = [],
+): RateAdj[] {
+  const bookByKey = new Map(
+    bookAdjustments.map((item) => [`${item.metal}:${item.unitKey}`, item]),
+  );
+  const memberByKey = new Map(
+    memberOverrides.map((item) => [`${item.metal}:${item.unitKey}`, item]),
+  );
+
+  return OFFSETTABLE_ROWS.map((row) => {
+    const key = `${row.metal}:${row.unitKey}`;
+    const book = bookByKey.get(key);
+    const override = memberByKey.get(key);
+    const bookBuy = book ? Number(book.buyDelta) : 0;
+    const bookSell = book ? Number(book.sellDelta) : 0;
+    const buyOverride = override ? optionalDelta(override.buyDelta) : null;
+    const sellOverride = override ? optionalDelta(override.sellDelta) : null;
+    return {
+      metal: row.metal,
+      unitKey: row.unitKey,
+      buyDelta: buyOverride ?? (Number.isFinite(bookBuy) ? bookBuy : 0),
+      sellDelta: sellOverride ?? (Number.isFinite(bookSell) ? bookSell : 0),
+    };
+  });
+}
+
+export function hasMemberOverrides(memberOverrides: MemberAdjOverride[] = []) {
+  return memberOverrides.some((item) => {
+    const buy = optionalDelta(item.buyDelta);
+    const sell = optionalDelta(item.sellDelta);
+    return buy != null || sell != null;
+  });
 }
 
 export function orderBoardRows(rows: BoardRow[]): BoardRow[] {

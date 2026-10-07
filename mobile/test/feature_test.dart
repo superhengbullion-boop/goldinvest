@@ -213,10 +213,22 @@ void main() {
     expect(find.text('Coming Soon'), findsOneWidget);
     expect(find.text('Super Heng BUY'), findsNWidgets(2));
 
-    await tester.tap(find.text('LOCK BUY').first);
+    // Lock Sell sits under Super Heng BUY; Lock Buy under Super Heng SELL.
+    final sellLeft = tester.getTopLeft(find.text('LOCK SELL'));
+    final buyLeft = tester.getTopLeft(find.text('LOCK BUY').first);
+    expect(sellLeft.dx < buyLeft.dx, isTrue);
+
+    await tester.tap(find.text('LOCK SELL'));
     await tester.pump();
     await tester.pump();
     expect(api.addCalls, 1);
+    expect(api.lastSide, 'sell');
+    expect(api.lastPrice, 400);
+
+    await tester.tap(find.text('LOCK BUY').first);
+    await tester.pump();
+    await tester.pump();
+    expect(api.addCalls, 2);
     expect(api.lastSide, 'buy');
     expect(api.lastPrice, 410);
     expect(find.text('Added to cart'), findsOneWidget);

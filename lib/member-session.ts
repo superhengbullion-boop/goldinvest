@@ -2,7 +2,8 @@ import "server-only";
 import { cookies } from "next/headers";
 import { decryptMember, encryptMember } from "@/lib/session-token";
 import { asBool, query, queryOne } from "@/lib/db";
-import type { MemberRow, RateBookAdjRow, RateBookRow } from "@/lib/data";
+import type { MemberAdjRow, MemberRow, RateBookAdjRow, RateBookRow } from "@/lib/data";
+import { hasMemberOverrides, mergeAdjustments, type RateAdj } from "@/lib/metal-quotes";
 
 const COOKIE = "member_session";
 const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -26,6 +27,32 @@ export async function deleteMemberSession() {
   (await cookies()).delete(COOKIE);
 }
 
+export function memberEffectiveAdjustments(
+  rateBook: RateBookRow | null | undefined,
+  adjustments: MemberAdjRow[] = [],
+): { adjustments: RateAdj[]; assigned: boolean } {
+  const book = rateBook?.isActive ? rateBook : null;
+  const bookAdjs = book
+    ? book.adjustments.map((item) => ({
+        metal: item.metal,
+        unitKey: item.unitKey,
+        buyDelta: Number(item.buyDelta),
+        sellDelta: Number(item.sellDelta),
+      }))
+    : [];
+  const overrides = adjustments.map((item) => ({
+    metal: item.metal,
+    unitKey: item.unitKey,
+    buyDelta: item.buyDelta,
+    sellDelta: item.sellDelta,
+  }));
+  const assigned = Boolean(book) || hasMemberOverrides(overrides);
+  return {
+    adjustments: mergeAdjustments(bookAdjs, overrides),
+    assigned,
+  };
+}
+
 export async function loadMember(memberId: number) {
   const member = await queryOne<MemberRow & { isActive: unknown }>(
     "SELECT * FROM `Member` WHERE `id`=? LIMIT 1", [memberId],
@@ -46,7 +73,12 @@ export async function loadMember(memberId: number) {
     }
   }
 
-  return { ...member, isActive: true as const, rateBook };
+  const adjustments = await query<MemberAdjRow>(
+    "SELECT * FROM `MemberAdj` WHERE `memberId`=?",
+    [memberId],
+  ).catch(() => [] as MemberAdjRow[]);
+
+  return { ...member, isActive: true as const, rateBook, adjustments };
 }
 
 export async function getMember() {

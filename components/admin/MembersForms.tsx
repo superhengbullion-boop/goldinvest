@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { createMember, deleteMember } from "@/app/actions/admin";
+import {
+  MemberPricingFields,
+  type PricingOverrideValue,
+} from "@/components/admin/MemberPricingFields";
 import { SaveFeedbackForm, SaveFeedbackSubmit } from "@/components/admin/SaveFeedbackForm";
-
-type BookOption = { id: string; name: string };
+import type { PricingBookOption } from "@/lib/member-pricing";
+import type { BoardRow, ManualIdrMyr } from "@/lib/metal-quotes";
 
 type MemberRow = {
   id: number;
@@ -17,7 +21,21 @@ type MemberRow = {
   rateBook: { name: string } | null;
 };
 
-export function MembersCreateForm({ books }: { books: BookOption[] }) {
+export type MemberPricingProps = {
+  books: PricingBookOption[];
+  marketBoard: BoardRow[];
+  goldMarket: BoardRow[];
+  silverMarket: BoardRow[];
+  manualIdrMyr: ManualIdrMyr;
+};
+
+export function MembersCreateForm({
+  books,
+  marketBoard,
+  goldMarket,
+  silverMarket,
+  manualIdrMyr,
+}: MemberPricingProps) {
   return (
     <SaveFeedbackForm
       action={createMember}
@@ -57,17 +75,110 @@ export function MembersCreateForm({ books }: { books: BookOption[] }) {
         placeholder="Email"
         className="rounded border border-gold/30 bg-ink px-3 py-2"
       />
-      <select name="rateBookId" className="rounded border border-gold/30 bg-ink px-3 py-2">
-        <option value="">No price book yet</option>
-        {books.map((book) => (
-          <option key={book.id} value={book.id}>
-            {book.name}
-          </option>
-        ))}
-      </select>
+      <MemberPricingFields
+        books={books}
+        marketBoard={marketBoard}
+        goldMarket={goldMarket}
+        silverMarket={silverMarket}
+        manualIdrMyr={manualIdrMyr}
+      />
       <div className="col-span-full">
         <SaveFeedbackSubmit label="Create member" className="gold-btn justify-self-start" />
       </div>
+    </SaveFeedbackForm>
+  );
+}
+
+export function MemberEditForm({
+  member,
+  books,
+  marketBoard,
+  goldMarket,
+  silverMarket,
+  manualIdrMyr,
+  initialOverrides,
+  action,
+}: MemberPricingProps & {
+  member: {
+    id: number;
+    username: string;
+    fullName: string;
+    phone: string;
+    email: string;
+    rateBookId: string | null;
+    isActive: boolean;
+  };
+  initialOverrides: PricingOverrideValue[];
+  action: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <SaveFeedbackForm
+      action={action}
+      className="grid max-w-4xl grid-cols-1 gap-4 rounded-xl border border-gold/25 p-6"
+      successMessage="Member saved successfully."
+    >
+      <input type="hidden" name="id" value={member.id} />
+      <label className="text-sm">
+        <span className="mb-1 block text-mist">Username</span>
+        <input
+          name="username"
+          defaultValue={member.username}
+          required
+          className="w-full rounded border border-gold/30 bg-ink px-3 py-2"
+        />
+      </label>
+      <label className="text-sm">
+        <span className="mb-1 block text-mist">Full name</span>
+        <input
+          name="fullName"
+          defaultValue={member.fullName}
+          required
+          className="w-full rounded border border-gold/30 bg-ink px-3 py-2"
+        />
+      </label>
+      <label className="text-sm">
+        <span className="mb-1 block text-mist">Phone</span>
+        <input
+          name="phone"
+          defaultValue={member.phone}
+          required
+          className="w-full rounded border border-gold/30 bg-ink px-3 py-2"
+        />
+      </label>
+      <label className="text-sm">
+        <span className="mb-1 block text-mist">Email</span>
+        <input
+          name="email"
+          type="email"
+          defaultValue={member.email}
+          required
+          className="w-full rounded border border-gold/30 bg-ink px-3 py-2"
+        />
+      </label>
+      <label className="text-sm">
+        <span className="mb-1 block text-mist">New password</span>
+        <input
+          name="password"
+          type="password"
+          placeholder="Leave blank to keep current password"
+          className="w-full rounded border border-gold/30 bg-ink px-3 py-2"
+        />
+      </label>
+      <MemberPricingFields
+        books={books}
+        marketBoard={marketBoard}
+        goldMarket={goldMarket}
+        silverMarket={silverMarket}
+        manualIdrMyr={manualIdrMyr}
+        initialBookId={member.rateBookId ?? ""}
+        initialOverrides={initialOverrides}
+        allowInactiveBooks
+      />
+      <label className="flex items-center gap-2 text-sm">
+        <input name="isActive" type="checkbox" defaultChecked={member.isActive} />
+        Active
+      </label>
+      <SaveFeedbackSubmit label="Save changes" className="gold-btn justify-self-start" />
     </SaveFeedbackForm>
   );
 }

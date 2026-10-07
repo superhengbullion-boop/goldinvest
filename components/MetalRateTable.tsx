@@ -105,11 +105,12 @@ export function MetalRateTable({
                     <td className="px-4 py-3 max-md:px-2 max-md:py-2 max-md:text-sm">
                       {metal && !row.comingSoon ? (
                         <div className="flex flex-wrap items-start justify-center gap-2 max-md:gap-1">
-                          {canBuy ? (
-                            <TradeKgButton metal={metal} side="buy" lockedPrice={row.sell} />
-                          ) : null}
+                          {/* Super Heng BUY → Lock Sell; Super Heng SELL → Lock Buy */}
                           {canSell ? (
                             <TradeKgButton metal={metal} side="sell" lockedPrice={row.buy} />
+                          ) : null}
+                          {canBuy ? (
+                            <TradeKgButton metal={metal} side="buy" lockedPrice={row.sell} />
                           ) : null}
                         </div>
                       ) : null}

@@ -273,24 +273,26 @@ class _RateCard extends StatelessWidget {
             ),
           if (metal != null && !row.comingSoon) ...[
             const SizedBox(height: 14),
+            // Align under Super Heng BUY / SELL: Lock Sell uses buy price, Lock Buy uses sell price.
             Row(
               children: [
-                if (row.sell > 0)
-                  Expanded(
-                    child: _LockButton(
-                      label: copy.lockBuyLabel,
-                      onPressed: () => _lock(context, metal: metal, side: 'buy', price: row.sell),
-                    ),
-                  ),
-                if (metal == 'XAU' && row.buy > 0) ...[
-                  if (row.sell > 0) const SizedBox(width: 8),
-                  Expanded(
-                    child: _LockButton(
-                      label: copy.lockSellLabel,
-                      onPressed: () => _lock(context, metal: metal, side: 'sell', price: row.buy),
-                    ),
-                  ),
-                ],
+                Expanded(
+                  child: metal == 'XAU' && row.buy > 0
+                      ? _LockButton(
+                          label: copy.lockSellLabel,
+                          onPressed: () => _lock(context, metal: metal, side: 'sell', price: row.buy),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: row.sell > 0
+                      ? _LockButton(
+                          label: copy.lockBuyLabel,
+                          onPressed: () => _lock(context, metal: metal, side: 'buy', price: row.sell),
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ],
             ),
           ],

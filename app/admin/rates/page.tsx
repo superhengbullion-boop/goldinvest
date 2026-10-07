@@ -52,8 +52,8 @@ export default async function AdminRatesPage() {
       <h1 className="font-display text-4xl text-gold">Rates Setting</h1>
       <p className="mt-2 mb-8 max-w-2xl text-mist">
         Live market rows come from Eliz. IDR/MYR is set manually below and shared across the
-        rates board. Create price books with add/subtract offsets on the physical MYR/KG rows,
-        then assign a book to each member.
+        rates board. Create shared price-book tiers here, then assign a book and optional
+        per-member overrides on each member.
       </p>
 
       <section className="mb-10 rounded-xl border border-gold/25 p-6">
@@ -174,7 +174,8 @@ export default async function AdminRatesPage() {
                   <div>
                     <p className="font-display text-xl text-ivory">{book.name}</p>
                     <p className="text-xs text-mist">
-                      {book.isActive ? "Active" : "Disabled"} · members assigned this book see the preview below
+                      {book.isActive ? "Active" : "Disabled"} · {book.memberCount ?? 0} member
+                      {(book.memberCount ?? 0) === 1 ? "" : "s"} · preview below includes book offsets only
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">

@@ -52,9 +52,15 @@ export type RateBookAdjRow = {
   buyDelta: string; sellDelta: string;
 };
 
+export type MemberAdjRow = {
+  id: string; memberId: number; metal: string; unitKey: string;
+  buyDelta: string | null; sellDelta: string | null;
+};
+
 export type RateBookRow = {
   id: string; name: string; isActive: boolean;
   createdAt: Date; updatedAt: Date; adjustments: RateBookAdjRow[];
+  memberCount?: number;
 };
 
 export type MemberRow = {
@@ -62,6 +68,7 @@ export type MemberRow = {
   phone: string; email: string; fullName: string; isActive: boolean;
   rateBookId: string | null; createdAt: Date; updatedAt: Date;
   rateBook: { id: string; name: string } | null;
+  adjustments?: MemberAdjRow[];
 };
 
 export type ContactMessageRow = {
@@ -189,20 +196,37 @@ export async function getRateRefreshTimes() {
 // ── rate books ────────────────────────────────────────────────────────────────
 
 export async function getRateBooks(): Promise<RateBookRow[]> {
-  const books = await query<Omit<RateBookRow, "adjustments"> & { isActive: unknown }>(
+  const books = await query<Omit<RateBookRow, "adjustments" | "memberCount"> & { isActive: unknown }>(
     "SELECT * FROM `RateBook` ORDER BY `createdAt` ASC",
   );
   if (books.length === 0) return [];
   const ids = books.map((b) => b.id);
   const placeholders = ids.map(() => "?").join(",");
-  const adjs = await query<RateBookAdjRow>(
-    `SELECT * FROM \`RateBookAdj\` WHERE \`bookId\` IN (${placeholders})`, ids,
-  );
+  const [adjs, counts] = await Promise.all([
+    query<RateBookAdjRow>(
+      `SELECT * FROM \`RateBookAdj\` WHERE \`bookId\` IN (${placeholders})`, ids,
+    ),
+    query<{ rateBookId: string; total: number }>(
+      `SELECT \`rateBookId\`, COUNT(*) AS total FROM \`Member\`
+       WHERE \`rateBookId\` IN (${placeholders})
+       GROUP BY \`rateBookId\``,
+      ids,
+    ).catch(() => [] as { rateBookId: string; total: number }[]),
+  ]);
+  const countByBook = new Map(counts.map((row) => [row.rateBookId, Number(row.total)]));
   return books.map((b) => ({
     ...b,
     isActive: asBool(b.isActive),
     adjustments: adjs.filter((a) => a.bookId === b.id),
+    memberCount: countByBook.get(b.id) ?? 0,
   }));
+}
+
+export async function getMemberAdjustments(memberId: number): Promise<MemberAdjRow[]> {
+  return query<MemberAdjRow>(
+    "SELECT * FROM `MemberAdj` WHERE `memberId`=?",
+    [memberId],
+  ).catch(() => []);
 }
 
 // ── members ───────────────────────────────────────────────────────────────────
@@ -264,7 +288,9 @@ export async function getMemberById(id: number): Promise<MemberRow | null> {
      FROM \`Member\` m LEFT JOIN \`RateBook\` b ON b.\`id\`=m.\`rateBookId\`
      WHERE m.\`id\`=? LIMIT 1`, [id],
   );
-  return row ? mapMemberRow(row) : null;
+  if (!row) return null;
+  const adjustments = await getMemberAdjustments(id);
+  return { ...mapMemberRow(row), adjustments };
 }
 
 export async function getMemberCount(): Promise<number> {

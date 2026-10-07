@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LiveRatesBoard } from "@/components/LiveRatesBoard";
 import { RichText } from "@/components/RichText";
 import { getRatesPage } from "@/lib/data";
-import { getMember } from "@/lib/member-session";
+import { getMember, memberEffectiveAdjustments } from "@/lib/member-session";
 import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -11,6 +11,10 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RatesPage() {
   const [{ content }, member] = await Promise.all([getRatesPage(), getMember()]);
+  const { assigned } = memberEffectiveAdjustments(
+    member?.rateBook,
+    member?.adjustments ?? [],
+  );
 
   return (
     <div className="mx-[5%] py-8 max-md:mt-4">
@@ -24,7 +28,7 @@ export default async function RatesPage() {
         />
       </div>
 
-      {!member?.rateBook ? (
+      {!assigned ? (
         <p className="mt-16 text-mist max-md:text-center">
           Your rate book is not assigned yet. Please contact us.
         </p>

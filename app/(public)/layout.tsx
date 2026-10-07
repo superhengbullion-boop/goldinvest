@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { LiveRateTicker } from "@/components/LiveRateTicker";
 import { MarketRatesProvider } from "@/components/MarketRatesProvider";
 import { getSiteSettings } from "@/lib/data";
-import { getMember } from "@/lib/member-session";
+import { getMember, memberEffectiveAdjustments } from "@/lib/member-session";
 import { getCartItemCount } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,10 @@ export default async function PublicLayout({
   children: React.ReactNode;
 }) {
   const [member, site] = await Promise.all([getMember(), getSiteSettings()]);
-  const showTicker = Boolean(member?.rateBook?.isActive);
+  const showTicker = memberEffectiveAdjustments(
+    member?.rateBook,
+    member?.adjustments ?? [],
+  ).assigned;
   const cartCount = member
     ? await getCartItemCount(member.id).catch(() => 0)
     : 0;

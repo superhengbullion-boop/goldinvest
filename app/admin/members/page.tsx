@@ -1,6 +1,16 @@
 import Link from "next/link";
 import { MembersCreateForm, MembersTable } from "@/components/admin/MembersForms";
-import { getMembersPage, getRateBooks } from "@/lib/data";
+import {
+  getManualFxRates,
+  getMembersPage,
+  getMetalQuotes,
+  getRateBooks,
+} from "@/lib/data";
+import { toPricingBooks } from "@/lib/member-pricing";
+import {
+  buildRatesBoard,
+  marketBoardForMetal,
+} from "@/lib/metal-quotes";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -32,21 +42,29 @@ export default async function AdminMembersPage({
   const phone = first(params.phone).trim();
   const requestedPage = Math.max(1, Number(params.page) || 1);
 
-  const [{ members, total, page, pageCount }, books] = await Promise.all([
+  const [{ members, total, page, pageCount }, books, quotes, manualIdrMyr] = await Promise.all([
     getMembersPage({ username, email, phone, page: requestedPage }),
     getRateBooks(),
+    getMetalQuotes(),
+    getManualFxRates(),
   ]);
-  const bookOptions = books.filter((book) => book.isActive).map((book) => ({
-    id: book.id,
-    name: book.name,
-  }));
+  const goldMarket = marketBoardForMetal(quotes, "XAU");
+  const silverMarket = marketBoardForMetal(quotes, "XAG");
+  const marketBoard = buildRatesBoard(goldMarket, silverMarket, manualIdrMyr);
+  const pricingBooks = toPricingBooks(books);
   const filters = { username, email, phone };
 
   return (
     <div>
       <h1 className="mb-10 font-display text-4xl text-gold">Members</h1>
 
-      <MembersCreateForm books={bookOptions} />
+      <MembersCreateForm
+        books={pricingBooks}
+        marketBoard={marketBoard}
+        goldMarket={goldMarket}
+        silverMarket={silverMarket}
+        manualIdrMyr={manualIdrMyr}
+      />
 
       <section className="rounded-xl border border-gold/25 p-6">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">

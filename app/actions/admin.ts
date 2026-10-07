@@ -7,8 +7,29 @@ import { isPageSlug, PAGE_META } from "@/lib/cms";
 import { sanitizePageContent } from "@/lib/richtext";
 import { APP_CONTENT_SLUG, DEFAULT_APP_CONTENT, appLabelText } from "@/lib/app-content";
 import { SITE_SETTINGS_SLUG } from "@/lib/seo";
-import { MANUAL_RATES_SLUG } from "@/lib/metal-quotes";
+import { MANUAL_RATES_SLUG, OFFSETTABLE_ROWS } from "@/lib/metal-quotes";
 import type { RateBookAdjRow } from "@/lib/data";
+
+function parseOptionalDelta(raw: FormDataEntryValue | null) {
+  const text = String(raw ?? "").trim();
+  if (!text) return null;
+  const n = Number(text);
+  if (!Number.isFinite(n)) throw new Error("Override offsets must be numbers.");
+  return n;
+}
+
+async function replaceMemberOverrides(memberId: number, formData: FormData) {
+  await execute("DELETE FROM `MemberAdj` WHERE `memberId`=?", [memberId]);
+  for (const row of OFFSETTABLE_ROWS) {
+    const buyDelta = parseOptionalDelta(formData.get(`ovr_${row.metal}_${row.unitKey}_buy`));
+    const sellDelta = parseOptionalDelta(formData.get(`ovr_${row.metal}_${row.unitKey}_sell`));
+    if (buyDelta == null && sellDelta == null) continue;
+    await execute(
+      "INSERT INTO `MemberAdj`(`id`,`memberId`,`metal`,`unitKey`,`buyDelta`,`sellDelta`) VALUES(?,?,?,?,?,?)",
+      [newId(), memberId, row.metal, row.unitKey, buyDelta, sellDelta],
+    );
+  }
+}
 
 async function requireAdmin() {
   const session = await getSession();
@@ -314,11 +335,14 @@ export async function createMember(formData: FormData) {
       "UPDATE `Member` SET `memberId`=?,`updatedAt`=NOW(3) WHERE `id`=?",
       [formatMemberId(insertId), insertId],
     );
+    await replaceMemberOverrides(insertId, formData);
   } catch (e) {
     if (isDuplicateKey(e)) throw new Error("Username or email already exists.");
     throw e;
   }
   revalidatePath("/admin/members");
+  revalidatePath("/admin/rates");
+  revalidatePath("/rates");
 }
 
 export async function updateMember(formData: FormData) {
@@ -349,12 +373,15 @@ export async function updateMember(formData: FormData) {
         [username, phone, email, fullName, rateBookId, isActive ? 1 : 0, id],
       );
     }
+    await replaceMemberOverrides(id, formData);
   } catch (e) {
     if (isDuplicateKey(e)) throw new Error("Username or email already exists.");
     throw e;
   }
   revalidatePath("/admin/members");
   revalidatePath(`/admin/members/${id}`);
+  revalidatePath("/admin/rates");
+  revalidatePath("/rates");
 }
 
 export async function deleteMember(formData: FormData) {

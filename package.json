@@ -8,6 +8,7 @@
     "start": "next start",
     "start:cpanel": "node server.js",
     "lint": "eslint",
+    "test": "tsx --test lib/**/*.test.ts",
     "db:generate": "node scripts/cpanel-skip-prisma.js",
     "db:migrate": "node scripts/cpanel-skip-prisma.js",
     "db:dev": "prisma migrate dev",
