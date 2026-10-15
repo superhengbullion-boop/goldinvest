@@ -97,6 +97,7 @@ export function MemberEditForm({
   silverMarket,
   manualIdrMyr,
   initialOverrides,
+  showTradingLimit = false,
   action,
 }: MemberPricingProps & {
   member: {
@@ -107,7 +108,9 @@ export function MemberEditForm({
     email: string;
     rateBookId: string | null;
     isActive: boolean;
+    tradingLimitMyr?: unknown;
   };
+  showTradingLimit?: boolean;
   initialOverrides: PricingOverrideValue[];
   action: (formData: FormData) => Promise<void>;
 }) {
@@ -155,6 +158,17 @@ export function MemberEditForm({
           className="w-full rounded border border-gold/30 bg-ink px-3 py-2"
         />
       </label>
+      {showTradingLimit ? (
+        <label className="text-sm">
+          <span className="mb-1 block text-mist">Trading limit (RM)</span>
+          <input
+            name="tradingLimitMyr"
+            inputMode="decimal"
+            defaultValue={Number(member.tradingLimitMyr ?? 0)}
+            className="w-full rounded border border-gold/30 bg-ink px-3 py-2"
+          />
+        </label>
+      ) : null}
       <label className="text-sm">
         <span className="mb-1 block text-mist">New password</span>
         <input

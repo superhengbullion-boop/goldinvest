@@ -129,6 +129,13 @@ model Member {
   email        String      @unique
   fullName     String
   isActive     Boolean     @default(true)
+  xauGrams        Decimal  @default(0) @db.Decimal(16, 6)
+  fundMyr         Decimal  @default(0) @db.Decimal(16, 2)
+  tradingLimitMyr Decimal  @default(0) @db.Decimal(16, 2)
+  address         String   @default("")
+  companyName     String   @default("")
+  registrationNo  String   @default("")
+  locale          String   @default("en")
   rateBookId   String?
   rateBook     RateBook?   @relation(fields: [rateBookId], references: [id], onDelete: SetNull)
   createdAt    DateTime    @default(now())
@@ -136,6 +143,83 @@ model Member {
   cartItems    CartItem[]
   orders       Order[]
   adjustments  MemberAdj[]
+  deposits      Deposit[]
+  bankAccounts  BankAccount[]
+  withdrawals   Withdrawal[]
+  transfersOut  GoldTransfer[] @relation("TransferFrom")
+  transfersIn   GoldTransfer[] @relation("TransferTo")
+  announcementReads AnnouncementRead[]
+}
+
+model BankAccount {
+  id         String    @id @default(cuid())
+  memberId   Int
+  holderName String
+  bankName   String
+  accountNo  String
+  status     String    @default("pending")
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  member     Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, status])
+}
+
+model Withdrawal {
+  id            String    @id @default(cuid())
+  memberId      Int
+  kind          String
+  amount        Decimal   @db.Decimal(16, 6)
+  status        String    @default("pending")
+  bankAccountId String?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  member        Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([memberId])
+}
+
+model GoldTransfer {
+  id           String    @id @default(cuid())
+  fromMemberId Int
+  toMemberId   Int
+  grams        Decimal   @db.Decimal(16, 6)
+  status       String    @default("pending")
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  fromMember   Member    @relation("TransferFrom", fields: [fromMemberId], references: [id], onDelete: Cascade)
+  toMember     Member    @relation("TransferTo", fields: [toMemberId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([fromMemberId])
+  @@index([toMemberId])
+}
+
+model Announcement {
+  id        String             @id @default(cuid())
+  title     String
+  body      String             @db.Text
+  isActive  Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  reads     AnnouncementRead[]
+}
+
+model AnnouncementRead {
+  memberId       Int
+  announcementId String
+  readAt         DateTime     @default(now())
+  member         Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, announcementId])
+  @@index([announcementId])
 }
 
 /// Optional per-member overrides. Null buy/sell means inherit book (or market).
@@ -179,6 +263,54 @@ model Order {
   updatedAt   DateTime    @updatedAt
   member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
   items       OrderItem[]
+}
+
+model Deposit {
+  id              String    @id @default(cuid())
+  memberId        Int
+  kind            String
+  status          String    @default("pending")
+  comment         String?   @db.Text
+  proofPath       String?
+  bankAccountId   String?
+  creditedAmount  Decimal?  @db.Decimal(16, 6)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  member          Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([memberId])
+}
+
+model PriceBar {
+  pair       String   @db.VarChar(16)
+  minute     DateTime
+  buyOpen    Decimal  @db.Decimal(16, 6)
+  buyHigh    Decimal  @db.Decimal(16, 6)
+  buyLow     Decimal  @db.Decimal(16, 6)
+  buyClose   Decimal  @db.Decimal(16, 6)
+  sellOpen   Decimal  @db.Decimal(16, 6)
+  sellHigh   Decimal  @db.Decimal(16, 6)
+  sellLow    Decimal  @db.Decimal(16, 6)
+  sellClose  Decimal  @db.Decimal(16, 6)
+  marketOpen Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
+
+  @@id([pair, minute])
+}
+
+model PriceSample {
+  id         String   @id
+  pair       String   @db.VarChar(16)
+  buy        Decimal  @db.Decimal(16, 6)
+  sell       Decimal  @db.Decimal(16, 6)
+  marketOpen Boolean  @default(true)
+  recordedAt DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([pair, recordedAt])
 }
 
 model OrderItem {

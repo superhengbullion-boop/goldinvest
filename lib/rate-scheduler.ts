@@ -40,7 +40,7 @@ export async function runScheduledRateRefresh(at = new Date()) {
          ON DUPLICATE KEY UPDATE \`fetchedAt\`=NOW(3),\`source\`=VALUES(\`source\`),\`ok\`=1,\`error\`=NULL`,
         [slotKey, source],
       );
-      console.log(`[rates] Refreshed Eliz + GoldAPI quotes for ${slotKey} (${RATE_TIMEZONE})`);
+      console.log(`[rates] Refreshed SuperHeng + GoldAPI quotes for ${slotKey} (${RATE_TIMEZONE})`);
       return { skipped: false as const, slotKey };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

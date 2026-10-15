@@ -1,4 +1,5 @@
 import "server-only";
+import { assetsHubEnabled } from "@/lib/feature-flags";
 import { decryptMember } from "@/lib/session-token";
 import { loadMember } from "@/lib/member-session";
 
@@ -8,19 +9,31 @@ export type MobileProfile = {
   fullName: string;
   phone: string;
   email: string;
+  address?: string;
+  companyName?: string;
+  registrationNo?: string;
+  locale?: string;
   rateBookAssigned: boolean;
 };
 
 type LoadedMember = NonNullable<Awaited<ReturnType<typeof loadMember>>>;
 
 export function toMobileProfile(member: LoadedMember): MobileProfile {
-  return {
+  const profile: MobileProfile = {
     memberId: member.memberId,
     username: member.username,
     fullName: member.fullName,
     phone: member.phone,
     email: member.email,
     rateBookAssigned: Boolean(member.rateBook?.isActive),
+  };
+  if (!assetsHubEnabled()) return profile;
+  return {
+    ...profile,
+    address: String(member.address ?? ""),
+    companyName: String(member.companyName ?? ""),
+    registrationNo: String(member.registrationNo ?? ""),
+    locale: String(member.locale ?? "en") || "en",
   };
 }
 

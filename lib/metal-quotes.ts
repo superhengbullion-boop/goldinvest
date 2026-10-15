@@ -70,7 +70,7 @@ function fxRow(usd: QuoteLike, myr: QuoteLike): BoardRow | null {
   };
 }
 
-/** Display order for each metal's raw board (Eliz-derived, no manual rows). */
+/** Display order for each metal's raw board (SuperHeng-derived, no manual rows). */
 export const BOARD_UNITS = [
   { key: "myr-kg", label: "MYR/KG", digits: 0, source: "api" },
   { key: "usd-myr", label: "USD/MYR", digits: 4, source: "api" },
@@ -331,7 +331,7 @@ export const RATES_BOARD_UNITS = [
 /**
  * Builds the unified 7-row rates board shown on the public page and in admin:
  * Physical Gold MYR/KG, Physical Silver MYR/KG, Gold(Spot) USD/OZ, IDR/MYR
- * (manual, shared), USD/MYR (from Gold's Eliz snapshot), and two static
+ * (manual, shared), USD/MYR (from Gold's SuperHeng snapshot), and two static
  * "Coming Soon" placeholders for MYR/USDT and IDR/USDT.
  */
 export function buildRatesBoard(

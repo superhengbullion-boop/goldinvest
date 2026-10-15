@@ -8,6 +8,7 @@ import {
   getMetalQuotes,
   getRateBooks,
 } from "@/lib/data";
+import { assetsHubEnabled } from "@/lib/feature-flags";
 import { toPricingBooks } from "@/lib/member-pricing";
 import {
   buildRatesBoard,
@@ -64,6 +65,7 @@ export default async function AdminMemberEditPage({
         silverMarket={silverMarket}
         manualIdrMyr={manualIdrMyr}
         initialOverrides={initialOverrides}
+        showTradingLimit={assetsHubEnabled()}
         action={updateMember}
       />
     </div>

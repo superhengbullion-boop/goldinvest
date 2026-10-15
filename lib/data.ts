@@ -66,6 +66,8 @@ export type RateBookRow = {
 export type MemberRow = {
   id: number; memberId: string; username: string; passwordHash: string;
   phone: string; email: string; fullName: string; isActive: boolean;
+  xauGrams?: unknown; fundMyr?: unknown; tradingLimitMyr?: unknown;
+  address?: string; companyName?: string; registrationNo?: string; locale?: string;
   rateBookId: string | null; createdAt: Date; updatedAt: Date;
   rateBook: { id: string; name: string } | null;
   adjustments?: MemberAdjRow[];

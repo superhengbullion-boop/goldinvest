@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:super_heng_bullion/app_content.dart';
+import 'package:super_heng_bullion/auth/login_page.dart';
 import 'package:super_heng_bullion/session.dart';
 import 'package:super_heng_bullion/shell/app_shell.dart';
 import 'package:super_heng_bullion/splash/launch_splash.dart';
@@ -32,8 +33,23 @@ class GoldInvestApp extends StatefulWidget {
   State<GoldInvestApp> createState() => _GoldInvestAppState();
 }
 
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    final session = SessionScope.of(context);
+    if (session.restoring) {
+      return const ColoredBox(color: AppColors.ink);
+    }
+    if (!session.signedIn) return const LoginPage();
+    return const AppShell();
+  }
+}
+
 class _GoldInvestAppState extends State<GoldInvestApp> {
-  late final SessionController _session = widget.session ?? SessionController();
+  late final SessionController _session =
+      widget.session ?? SessionController(restoring: widget.restoreSession);
   late final AppContentController _content = AppContentController(api: _session.api);
 
   @override
@@ -49,7 +65,7 @@ class _GoldInvestAppState extends State<GoldInvestApp> {
 
   @override
   Widget build(BuildContext context) {
-    final shell = const AppShell();
+    const home = _AuthGate();
     return AppContentScope(
       controller: _content,
       child: SessionScope(
@@ -59,8 +75,8 @@ class _GoldInvestAppState extends State<GoldInvestApp> {
           debugShowCheckedModeBanner: false,
           theme: buildAppTheme(),
           home: widget.showSplash
-              ? LaunchSplash(logoPath: widget.splashLogoPath, child: shell)
-              : shell,
+              ? LaunchSplash(logoPath: widget.splashLogoPath, child: home)
+              : home,
         ),
       ),
     );

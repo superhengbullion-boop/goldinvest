@@ -1,0 +1,2 @@
+ALTER TABLE `Deposit`
+  ADD COLUMN `bankAccountId` VARCHAR(191) NULL;

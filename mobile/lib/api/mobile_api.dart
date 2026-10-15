@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiException implements Exception {
@@ -19,6 +20,10 @@ class Profile {
     required this.phone,
     required this.email,
     required this.rateBookAssigned,
+    this.address = '',
+    this.companyName = '',
+    this.registrationNo = '',
+    this.locale = 'en',
   });
 
   final String memberId;
@@ -27,6 +32,10 @@ class Profile {
   final String phone;
   final String email;
   final bool rateBookAssigned;
+  final String address;
+  final String companyName;
+  final String registrationNo;
+  final String locale;
 
   factory Profile.fromJson(Map<String, dynamic> json) {
     return Profile(
@@ -36,6 +45,10 @@ class Profile {
       phone: '${json['phone'] ?? ''}',
       email: '${json['email'] ?? ''}',
       rateBookAssigned: json['rateBookAssigned'] == true,
+      address: '${json['address'] ?? ''}',
+      companyName: '${json['companyName'] ?? ''}',
+      registrationNo: '${json['registrationNo'] ?? ''}',
+      locale: '${json['locale'] ?? 'en'}',
     );
   }
 }
@@ -371,6 +384,261 @@ class CompanyInfo {
   }
 }
 
+class MemberAssets {
+  const MemberAssets({
+    required this.xauGrams,
+    required this.fundMyr,
+    required this.tradingLimitMyr,
+  });
+
+  final double xauGrams;
+  final double fundMyr;
+  final double tradingLimitMyr;
+
+  factory MemberAssets.fromJson(Map<String, dynamic> json) {
+    return MemberAssets(
+      xauGrams: _num(json['xauGrams']),
+      fundMyr: _num(json['fundMyr']),
+      tradingLimitMyr: _num(json['tradingLimitMyr']),
+    );
+  }
+}
+
+class PricePoint {
+  const PricePoint({
+    required this.at,
+    required this.price,
+    double? open,
+    double? high,
+    double? low,
+  })  : open = open ?? price,
+        high = high ?? price,
+        low = low ?? price;
+
+  final DateTime at;
+  final double price;
+  final double open;
+  final double high;
+  final double low;
+
+  factory PricePoint.fromJson(Map<String, dynamic> json) {
+    final close = _num(json['close'] ?? json['price']);
+    return PricePoint(
+      at: DateTime.tryParse('${json['at']}')?.toLocal() ?? DateTime.now(),
+      price: close,
+      open: json['open'] == null ? close : _num(json['open']),
+      high: json['high'] == null ? close : _num(json['high']),
+      low: json['low'] == null ? close : _num(json['low']),
+    );
+  }
+}
+
+class PriceChart {
+  const PriceChart({
+    required this.pair,
+    required this.unit,
+    required this.marketOpen,
+    required this.sell,
+    required this.buy,
+    required this.side,
+    required this.range,
+    required this.ranges,
+    required this.points,
+    this.updatedAt,
+  });
+
+  final String pair;
+  final String unit;
+  final bool marketOpen;
+  final String? sell;
+  final String? buy;
+  final String side;
+  final String range;
+  final List<String> ranges;
+  final List<PricePoint> points;
+  final DateTime? updatedAt;
+
+  factory PriceChart.fromJson(Map<String, dynamic> json) {
+    final rawPoints = json['points'];
+    return PriceChart(
+      pair: '${json['pair'] ?? 'xau_myr'}',
+      unit: '${json['unit'] ?? ''}',
+      marketOpen: json['marketOpen'] == true,
+      sell: json['sell'] == null ? null : '${json['sell']}',
+      buy: json['buy'] == null ? null : '${json['buy']}',
+      side: '${json['side'] ?? 'buy'}',
+      range: '${json['range'] ?? '1D'}',
+      ranges: rawList(json['ranges']),
+      updatedAt: DateTime.tryParse('${json['updatedAt'] ?? ''}'),
+      points: rawPoints is List
+          ? rawPoints
+              .whereType<Map>()
+              .map((row) => PricePoint.fromJson(Map<String, dynamic>.from(row)))
+              .toList()
+          : const [],
+    );
+  }
+}
+
+List<String> rawList(Object? value) {
+  if (value is! List) return const [];
+  return value.map((item) => '$item').toList();
+}
+
+class WalletEntry {
+  const WalletEntry({
+    required this.id,
+    required this.method,
+    required this.status,
+    required this.amount,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String method;
+  final String status;
+  final double? amount;
+  final DateTime? createdAt;
+
+  factory WalletEntry.fromJson(Map<String, dynamic> json) {
+    final amount = json['amount'];
+    return WalletEntry(
+      id: '${json['id'] ?? ''}',
+      method: '${json['method'] ?? ''}',
+      status: '${json['status'] ?? ''}',
+      amount: amount == null ? null : _num(amount),
+      createdAt: json['createdAt'] is String
+          ? DateTime.tryParse(json['createdAt'] as String)
+          : null,
+    );
+  }
+}
+
+class BankAccount {
+  const BankAccount({
+    required this.id,
+    required this.holderName,
+    required this.bankName,
+    required this.accountNo,
+    required this.status,
+  });
+
+  final String id;
+  final String holderName;
+  final String bankName;
+  final String accountNo;
+  final String status;
+
+  factory BankAccount.fromJson(Map<String, dynamic> json) {
+    return BankAccount(
+      id: '${json['id'] ?? ''}',
+      holderName: '${json['holderName'] ?? ''}',
+      bankName: '${json['bankName'] ?? ''}',
+      accountNo: '${json['accountNo'] ?? ''}',
+      status: '${json['status'] ?? ''}',
+    );
+  }
+}
+
+class Announcement {
+  const Announcement({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    required this.read,
+  });
+
+  final String id;
+  final String title;
+  final String body;
+  final String createdAt;
+  final bool read;
+
+  factory Announcement.fromJson(Map<String, dynamic> json) {
+    return Announcement(
+      id: '${json['id'] ?? ''}',
+      title: '${json['title'] ?? ''}',
+      body: '${json['body'] ?? ''}',
+      createdAt: '${json['createdAt'] ?? ''}',
+      read: json['read'] == true,
+    );
+  }
+}
+
+class AnnouncementFeed {
+  const AnnouncementFeed({required this.rows, required this.unreadCount});
+
+  final List<Announcement> rows;
+  final int unreadCount;
+}
+
+class DepositInfo {
+  const DepositInfo({
+    required this.infoHeading,
+    required this.supportPhone,
+    required this.accountHolderName,
+    required this.bankName,
+    required this.bankAccount,
+    required this.fundInstructions,
+    required this.xauInstructions,
+  });
+
+  final String infoHeading;
+  final String supportPhone;
+  final String accountHolderName;
+  final String bankName;
+  final String bankAccount;
+  final List<String> fundInstructions;
+  final List<String> xauInstructions;
+
+  static const fallback = DepositInfo(
+    infoHeading: 'SuperHeng Gold Information',
+    supportPhone: '+6072870221',
+    accountHolderName: 'SuperHeng Precious Metals Sdn Bhd',
+    bankName: 'OCBC Bank Berhad',
+    bankAccount: '7161127883',
+    fundInstructions: [
+      'Please transfer owed to this SuperHeng Gold Bank Account using a verified account.',
+      'Upload a screenshot of the transfer after completion.',
+      'The amount will be verified and recorded by the administrator.',
+      'If you have any questions, please contact our customer support.',
+    ],
+    xauInstructions: [
+      'Please contact SuperHeng Gold customer support for assistance with deposit.',
+      'The administrator will review and record the quantity of gold received.',
+    ],
+  );
+
+  factory DepositInfo.fromJson(Map<String, dynamic> json) {
+    String pick(String key, String fallbackValue) {
+      final value = json[key];
+      final text = value is String ? value.trim() : '';
+      return text.isEmpty ? fallbackValue : text;
+    }
+
+    List<String> lines(String key, List<String> fallbackLines) {
+      final value = json[key];
+      if (value is! List) return fallbackLines;
+      final next = value
+          .map((line) => line is String ? line.trim() : '')
+          .where((line) => line.isNotEmpty)
+          .toList();
+      return next.isEmpty ? fallbackLines : next;
+    }
+
+    return DepositInfo(
+      infoHeading: pick('infoHeading', fallback.infoHeading),
+      supportPhone: pick('supportPhone', fallback.supportPhone),
+      accountHolderName: pick('accountHolderName', fallback.accountHolderName),
+      bankName: pick('bankName', fallback.bankName),
+      bankAccount: pick('bankAccount', fallback.bankAccount),
+      fundInstructions: lines('fundInstructions', fallback.fundInstructions),
+      xauInstructions: lines('xauInstructions', fallback.xauInstructions),
+    );
+  }
+}
+
 class CartResult {
   const CartResult({required this.items, required this.grandTotal});
   final List<CartLine> items;
@@ -394,11 +662,15 @@ double _num(Object? value) {
 }
 
 /// Talks to the gold-invest mobile API.
-/// The Android emulator reaches the host machine at 10.0.2.2.
+/// A debug build on the Android emulator uses the computer's dev server.
+/// A release build uses the public site.
 class MobileApi {
-  MobileApi(
-      {http.Client? client, this.baseUrl = 'https://superhengbullion.com.my'})
-      : _client = client ?? http.Client();
+  MobileApi({http.Client? client, String? baseUrl})
+      : baseUrl = baseUrl ??
+            (kDebugMode
+                ? 'http://10.0.2.2:3000'
+                : 'https://superhengbullion.com.my'),
+        _client = client ?? http.Client();
 
   final http.Client _client;
   final String baseUrl;
@@ -512,6 +784,195 @@ class MobileApi {
     return '${json['orderNo'] ?? ''}';
   }
 
+  Future<MemberAssets> fetchAssets(String token) async {
+    final json = await _send('GET', '/api/mobile/assets', token: token);
+    return MemberAssets.fromJson(json);
+  }
+
+  Future<PriceChart> fetchPrices(
+    String token, {
+    String pair = 'xau_myr',
+    String range = '1D',
+    String side = 'buy',
+    String frame = '1M',
+  }) async {
+    final json = await _send(
+      'GET',
+      '/api/mobile/prices?pair=$pair&range=$range&side=$side&frame=$frame',
+      token: token,
+    );
+    return PriceChart.fromJson(json);
+  }
+
+  Future<DepositInfo> fetchDepositInfo(String token) async {
+    final json = await _send('GET', '/api/mobile/deposit-info', token: token);
+    return DepositInfo.fromJson(json);
+  }
+
+  Future<List<WalletEntry>> fetchWallet(
+    String token, {
+    required String asset,
+    String method = '',
+    String status = '',
+    String from = '',
+    String to = '',
+  }) async {
+    final query = [
+      'asset=$asset',
+      if (method.isNotEmpty) 'method=$method',
+      if (status.isNotEmpty) 'status=$status',
+      if (from.isNotEmpty) 'from=$from',
+      if (to.isNotEmpty) 'to=$to',
+    ].join('&');
+    final json = await _send('GET', '/api/mobile/wallet?$query', token: token);
+    final raw = json['rows'];
+    if (raw is! List) return const [];
+    return raw
+        .map((row) =>
+            WalletEntry.fromJson(Map<String, dynamic>.from(row as Map)))
+        .toList();
+  }
+
+  Future<List<BankAccount>> fetchBankAccounts(String token,
+      {bool approvedOnly = false}) async {
+    final path = approvedOnly
+        ? '/api/mobile/bank-accounts?approved=1'
+        : '/api/mobile/bank-accounts';
+    final json = await _send('GET', path, token: token);
+    final raw = json['accounts'];
+    if (raw is! List) return const [];
+    return raw
+        .map((row) =>
+            BankAccount.fromJson(Map<String, dynamic>.from(row as Map)))
+        .toList();
+  }
+
+  Future<void> addBankAccount(String token,
+      {required String holderName,
+      required String bankName,
+      required String accountNo}) async {
+    await _send('POST', '/api/mobile/bank-accounts', token: token, body: {
+      'holderName': holderName,
+      'bankName': bankName,
+      'accountNo': accountNo,
+    });
+  }
+
+  Future<double?> submitWithdrawal(String token,
+      {required String kind,
+      required double amount,
+      String? bankAccountId}) async {
+    final json = await _send('POST', '/api/mobile/withdrawals', token: token, body: {
+      'kind': kind,
+      'amount': amount,
+      if (bankAccountId != null) 'bankAccountId': bankAccountId,
+    });
+    final balance = json['balance'];
+    return balance is num ? balance.toDouble() : null;
+  }
+
+  Future<void> submitTransfer(String token,
+      {required String username, required double grams}) async {
+    await _send('POST', '/api/mobile/transfers',
+        token: token, body: {'username': username, 'grams': grams});
+  }
+
+  Future<AnnouncementFeed> fetchAnnouncements(String token) async {
+    final json = await _send('GET', '/api/mobile/announcements', token: token);
+    final raw = json['announcements'];
+    final rows = raw is! List
+        ? const <Announcement>[]
+        : raw
+            .map((row) =>
+                Announcement.fromJson(Map<String, dynamic>.from(row as Map)))
+            .toList();
+    final unread = json['unreadCount'];
+    return AnnouncementFeed(
+      rows: rows,
+      unreadCount: unread is num ? unread.toInt() : rows.where((row) => !row.read).length,
+    );
+  }
+
+  Future<void> markAnnouncementRead(String token, String id) async {
+    await _send('POST', '/api/mobile/announcements/read', token: token, body: {'id': id});
+  }
+
+  Future<void> changePassword(String token,
+      {required String currentPassword,
+      required String newPassword,
+      required String confirmPassword}) async {
+    await _send('POST', '/api/mobile/password', token: token, body: {
+      'currentPassword': currentPassword,
+      'newPassword': newPassword,
+      'confirmPassword': confirmPassword,
+    });
+  }
+
+  Future<Profile> savePersonal(String token, Profile profile) async {
+    final json = await _send('PATCH', '/api/mobile/me', token: token, body: {
+      'section': 'personal',
+      'email': profile.email,
+      'fullName': profile.fullName,
+      'phone': profile.phone,
+      'address': profile.address,
+      'companyName': profile.companyName,
+      'registrationNo': profile.registrationNo,
+    });
+    return Profile.fromJson(json);
+  }
+
+  Future<Profile> saveLocale(String token, String locale) async {
+    final json = await _send('PATCH', '/api/mobile/me',
+        token: token, body: {'locale': locale});
+    return Profile.fromJson(json);
+  }
+
+  Future<void> submitXauDeposit(String token) async {
+    await _send('POST', '/api/mobile/deposits',
+        token: token, body: {'kind': 'xau'});
+  }
+
+  Future<void> submitFundDeposit(
+    String token, {
+    required List<int> bytes,
+    required String filename,
+    String comment = '',
+    String? bankAccountId,
+  }) async {
+    final request = http.MultipartRequest(
+        'POST', Uri.parse('$baseUrl/api/mobile/deposits'));
+    request.headers['Accept'] = 'application/json';
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields['kind'] = 'fund';
+    request.fields['comment'] = comment;
+    if (bankAccountId != null && bankAccountId.isNotEmpty) {
+      request.fields['bankAccountId'] = bankAccountId;
+    }
+    request.files
+        .add(http.MultipartFile.fromBytes('proof', bytes, filename: filename));
+    late http.Response response;
+    try {
+      final streamed = await _client.send(request);
+      response = await http.Response.fromStream(streamed);
+    } catch (_) {
+      throw ApiException(0, 'Cannot reach the server.');
+    }
+    Map<String, dynamic> json = {};
+    if (response.body.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) json = Map<String, dynamic>.from(decoded);
+      } catch (_) {
+        throw ApiException(
+            response.statusCode, 'The server did not return JSON.');
+      }
+    }
+    if (response.statusCode >= 400) {
+      throw ApiException(
+          response.statusCode, '${json['error'] ?? 'Request failed.'}');
+    }
+  }
+
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {
@@ -537,8 +998,13 @@ class MobileApi {
     }
     Map<String, dynamic> json = {};
     if (response.body.isNotEmpty) {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map) json = Map<String, dynamic>.from(decoded);
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) json = Map<String, dynamic>.from(decoded);
+      } catch (_) {
+        throw ApiException(
+            response.statusCode, 'The server did not return JSON.');
+      }
     }
     if (response.statusCode >= 400) {
       throw ApiException(

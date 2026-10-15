@@ -6,6 +6,8 @@ import { getSession } from "@/lib/session";
 import { isPageSlug, PAGE_META } from "@/lib/cms";
 import { sanitizePageContent } from "@/lib/richtext";
 import { APP_CONTENT_SLUG, DEFAULT_APP_CONTENT, appLabelText } from "@/lib/app-content";
+import { assetsHubEnabled } from "@/lib/feature-flags";
+import { tradingLimitError } from "@/lib/wallet-math";
 import { SITE_SETTINGS_SLUG } from "@/lib/seo";
 import { MANUAL_RATES_SLUG, OFFSETTABLE_ROWS } from "@/lib/metal-quotes";
 import type { RateBookAdjRow } from "@/lib/data";
@@ -357,15 +359,33 @@ export async function updateMember(formData: FormData) {
   const password   = String(formData.get("password")   ?? "");
   const rateBookId = String(formData.get("rateBookId") ?? "").trim() || null;
   const isActive   = formData.get("isActive") === "on";
+  const hub = assetsHubEnabled();
+  let tradingLimitMyr = 0;
+  if (hub) {
+    const limitText = String(formData.get("tradingLimitMyr") ?? "");
+    const limitProblem = tradingLimitError(limitText);
+    if (limitProblem) throw new Error(limitProblem);
+    tradingLimitMyr = limitText.trim() === "" ? 0 : Number(limitText.trim());
+  }
 
   if (!username || !phone || !email || !fullName)
     throw new Error("Username, phone, email, and full name are required.");
 
   try {
-    if (password) {
+    if (password && hub) {
+      await execute(
+        "UPDATE `Member` SET `username`=?,`phone`=?,`email`=?,`fullName`=?,`rateBookId`=?,`isActive`=?,`tradingLimitMyr`=?,`passwordHash`=?,`updatedAt`=NOW(3) WHERE `id`=?",
+        [username, phone, email, fullName, rateBookId, isActive ? 1 : 0, tradingLimitMyr, await bcrypt.hash(password, 12), id],
+      );
+    } else if (password) {
       await execute(
         "UPDATE `Member` SET `username`=?,`phone`=?,`email`=?,`fullName`=?,`rateBookId`=?,`isActive`=?,`passwordHash`=?,`updatedAt`=NOW(3) WHERE `id`=?",
         [username, phone, email, fullName, rateBookId, isActive ? 1 : 0, await bcrypt.hash(password, 12), id],
+      );
+    } else if (hub) {
+      await execute(
+        "UPDATE `Member` SET `username`=?,`phone`=?,`email`=?,`fullName`=?,`rateBookId`=?,`isActive`=?,`tradingLimitMyr`=?,`updatedAt`=NOW(3) WHERE `id`=?",
+        [username, phone, email, fullName, rateBookId, isActive ? 1 : 0, tradingLimitMyr, id],
       );
     } else {
       await execute(

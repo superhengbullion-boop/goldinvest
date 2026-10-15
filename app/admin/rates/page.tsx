@@ -51,7 +51,7 @@ export default async function AdminRatesPage() {
     <div>
       <h1 className="font-display text-4xl text-gold">Rates Setting</h1>
       <p className="mt-2 mb-8 max-w-2xl text-mist">
-        Live market rows come from Eliz. IDR/MYR is set manually below and shared across the
+        Live market rows come from SuperHeng. IDR/MYR is set manually below and shared across the
         rates board. Create shared price-book tiers here, then assign a book and optional
         per-member overrides on each member.
       </p>
@@ -117,7 +117,7 @@ export default async function AdminRatesPage() {
               <ul className="mt-6 space-y-1 text-sm text-mist">
                 {elizQuotes.map((quote) => (
                   <li key={quote.id}>
-                    {metalLabel(quote.metal)} Eliz · updated {formatInZone(quote.fetchedAt)} ·{" "}
+                    {metalLabel(quote.metal)} SuperHeng · updated {formatInZone(quote.fetchedAt)} ·{" "}
                     {quote.source}
                   </li>
                 ))}
@@ -306,7 +306,7 @@ export default async function AdminRatesPage() {
         <h2 className="font-display text-xl">Refresh times</h2>
         <p className="mt-1 mb-6 text-sm text-mist">
           The API is called only at these clock times each day, in {RATE_TIMEZONE}.
-          Each run fetches Eliz snapshots and GoldAPI quotes for gold and silver.
+          Each run fetches SuperHeng snapshots and GoldAPI quotes for gold and silver.
         </p>
 
         <SaveFeedbackForm

@@ -1,13 +1,19 @@
 import Link from 'next/link';
 import { getLatestQuoteFetch, getMemberCount, getMessages, getPages, getUnreadMessageCount } from '@/lib/data';
+import { getPendingDepositCount } from '@/lib/deposits';
+import { assetsHubEnabled } from '@/lib/feature-flags';
+import { getPendingWithdrawalCount } from '@/lib/wallet';
 import {PAGE_META, isPageSlug} from '@/lib/cms';
 
 export default async function AdminHome() {
-	const [pages, unread, latestQuote, memberCount] = await Promise.all([
+	const assetsHub = assetsHubEnabled();
+	const [pages, unread, latestQuote, memberCount, pendingDeposits, pendingWithdrawals] = await Promise.all([
 		getPages(),
 		getUnreadMessageCount(),
 		getLatestQuoteFetch(),
 		getMemberCount(),
+		assetsHub ? getPendingDepositCount().catch(() => 0) : 0,
+		assetsHub ? getPendingWithdrawalCount().catch(() => 0) : 0,
 	]);
 	const messages = await getMessages();
 
@@ -16,7 +22,9 @@ export default async function AdminHome() {
 			<h1 className='font-display text-4xl text-gold'>Dashboard</h1>
 			<p className='mt-2 text-mist'>Edit public pages, rates, and enquiries.</p>
 
-			<div className='mt-8 grid grid-cols-4 gap-6 max-md:grid-cols-1'>
+			<div className={assetsHub
+				? 'mt-8 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-md:grid-cols-1'
+				: 'mt-8 grid grid-cols-4 gap-6 max-md:grid-cols-1'}>
 				<div className='rounded-xl border border-gold/25 p-6'>
 					<p className='text-sm text-mist'>CMS pages</p>
 					<p className='mt-2 font-display text-4xl'>{pages.length}</p>
@@ -42,15 +50,36 @@ export default async function AdminHome() {
 							: 'Never'}
 					</p>
 				</div>
-				<div className='rounded-xl border border-gold/25 p-6'>
+				<Link
+					href='/admin/messages'
+					className='rounded-xl border border-gold/25 p-6 hover:border-gold'
+				>
 					<p className='text-sm text-mist'>Unread messages</p>
 					<p className='mt-2 font-display text-4xl'>{unread}</p>
-				</div>
+				</Link>
+				{assetsHub ? (
+					<Link
+						href='/admin/deposits'
+						className='rounded-xl border border-gold/25 p-6 hover:border-gold'
+					>
+						<p className='text-sm text-mist'>Pending deposits</p>
+						<p className='mt-2 font-display text-4xl'>{pendingDeposits}</p>
+					</Link>
+				) : null}
+				{assetsHub ? (
+					<Link
+						href='/admin/withdrawals'
+						className='rounded-xl border border-gold/25 p-6 hover:border-gold'
+					>
+						<p className='text-sm text-mist'>Pending withdrawals</p>
+						<p className='mt-2 font-display text-4xl'>{pendingWithdrawals}</p>
+					</Link>
+				) : null}
 			</div>
 
 			<h2 className='mt-12 font-display text-2xl'>Pages</h2>
 			<div className='mt-4 divide-y divide-gold/15 rounded-xl border border-gold/25'>
-				{pages.filter((page) => page.slug !== "settings" && page.slug !== "manual-rates" && page.slug !== "app").map((page) => {
+				{pages.filter((page) => page.slug !== "settings" && page.slug !== "manual-rates" && page.slug !== "app" && page.slug !== "deposit-settings").map((page) => {
 					const label = isPageSlug(page.slug)
 						? PAGE_META[page.slug].cmsLabel
 						: page.title;

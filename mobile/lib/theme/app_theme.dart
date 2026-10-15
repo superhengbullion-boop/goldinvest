@@ -57,6 +57,18 @@ ThemeData buildAppTheme() {
       error: AppColors.danger,
     ),
     textTheme: text,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.ink,
+      foregroundColor: AppColors.ivory,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: true,
+      titleTextStyle: TextStyle(
+        color: AppColors.ivory,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
     splashFactory: NoSplash.splashFactory,
     snackBarTheme: const SnackBarThemeData(
       backgroundColor: AppColors.gold,

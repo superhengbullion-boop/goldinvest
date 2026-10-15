@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:super_heng_bullion/api/mobile_api.dart';
 import 'package:super_heng_bullion/app_content.dart';
+import 'package:super_heng_bullion/l10n/app_text.dart';
 import 'package:super_heng_bullion/session.dart';
 import 'package:super_heng_bullion/theme/app_theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -66,6 +67,7 @@ class _CompanyPageState extends State<CompanyPage> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final t = AppText.of(context);
     final info = _info;
     final logoUrl = AppContentScope.of(context).copy.logoUrl;
     final site = Uri.tryParse(info.website)?.host ?? info.website;
@@ -76,7 +78,7 @@ class _CompanyPageState extends State<CompanyPage> {
         backgroundColor: AppColors.ink,
         foregroundColor: AppColors.ivory,
         elevation: 0,
-        title: const Text('Info'),
+        title: Text(t.info),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -90,9 +92,9 @@ class _CompanyPageState extends State<CompanyPage> {
             style: text.headlineLarge?.copyWith(fontSize: 26),
           ),
           const SizedBox(height: 6),
-          Text('Version $_version', key: const Key('company-version'), textAlign: TextAlign.center, style: text.bodySmall),
+          Text(t.version(_version), key: const Key('company-version'), textAlign: TextAlign.center, style: text.bodySmall),
           const SizedBox(height: 28),
-          Text('CONTACT', style: text.labelSmall),
+          Text(t.contact, style: text.labelSmall),
           const SizedBox(height: 10),
           _Card(
             children: [
@@ -122,7 +124,7 @@ class _CompanyPageState extends State<CompanyPage> {
             ],
           ),
           const SizedBox(height: 22),
-          Text(info.offices.length == 1 ? 'OFFICE' : 'OFFICES', style: text.labelSmall),
+          Text(t.office(info.offices.length != 1), style: text.labelSmall),
           for (var i = 0; i < info.offices.length; i++) ...[
             const SizedBox(height: 10),
             _OfficeCard(
@@ -135,20 +137,20 @@ class _CompanyPageState extends State<CompanyPage> {
             ),
           ],
           const SizedBox(height: 22),
-          Text('COMPANY', style: text.labelSmall),
+          Text(t.companyLabel, style: text.labelSmall),
           const SizedBox(height: 10),
           _Card(
             children: [
               _LinkRow(
                 rowKey: const Key('company-about'),
                 icon: Icons.menu_book_outlined,
-                label: 'About',
+                label: t.about,
                 onTap: () => _open(companyWebUri(info.aboutUrl)),
               ),
               _LinkRow(
                 rowKey: const Key('company-terms'),
                 icon: Icons.description_outlined,
-                label: 'Terms',
+                label: t.terms,
                 onTap: () => _open(companyWebUri(info.termsUrl)),
               ),
             ],
@@ -213,7 +215,7 @@ class _OfficeCard extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
           icon: const Icon(Icons.map_outlined),
-          label: const Text('Open in Maps', style: TextStyle(fontWeight: FontWeight.w700)),
+          label: Text(AppText.of(context).openInMaps, style: const TextStyle(fontWeight: FontWeight.w700)),
         ),
       ],
     );

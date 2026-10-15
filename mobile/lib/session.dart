@@ -8,14 +8,17 @@ class SessionController extends ChangeNotifier {
     this.cartCount = 0,
     this.token,
     this.profile,
+    this.restoring = false,
     MobileApi? api,
   }) : api = api ?? MobileApi();
 
   final MobileApi api;
   bool signedIn;
   int cartCount;
+  bool restoring;
   String? token;
   Profile? profile;
+  String locale = 'en';
   bool _openLogin = false;
 
   bool takeLoginRequest() {
@@ -25,28 +28,37 @@ class SessionController extends ChangeNotifier {
   }
 
   Future<void> restore() async {
+    restoring = true;
+    notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
+      locale = prefs.getString('member_locale') ?? 'en';
       final saved = prefs.getString('member_token');
       if (saved == null || saved.isEmpty) return;
       token = saved;
       profile = await api.fetchProfile(saved);
+      if (profile!.locale.isNotEmpty) locale = profile!.locale;
+      await prefs.setString('member_locale', locale);
       final cart = await api.fetchCart(saved);
       signedIn = true;
       cartCount = cart.items.length;
-      notifyListeners();
     } catch (_) {
       await _clear(openLogin: false);
+    } finally {
+      restoring = false;
+      notifyListeners();
     }
   }
 
   Future<void> applyLogin(String nextToken, Profile nextProfile) async {
     token = nextToken;
     profile = nextProfile;
+    if (nextProfile.locale.isNotEmpty) locale = nextProfile.locale;
     signedIn = true;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('member_token', nextToken);
+      await prefs.setString('member_locale', locale);
       final cart = await api.fetchCart(nextToken);
       cartCount = cart.items.length;
     } catch (_) {}
@@ -60,8 +72,14 @@ class SessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setLocale(String next) {
+    locale = next.isEmpty ? 'en' : next;
+    notifyListeners();
+  }
+
   void setProfile(Profile next) {
     profile = next;
+    if (next.locale.isNotEmpty) locale = next.locale;
     notifyListeners();
   }
 

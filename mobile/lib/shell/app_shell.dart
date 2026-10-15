@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:super_heng_bullion/account/account_page.dart';
-import 'package:super_heng_bullion/auth/login_page.dart';
-import 'package:super_heng_bullion/cart/cart_page.dart';
-import 'package:super_heng_bullion/rates/rates_page.dart';
-import 'package:super_heng_bullion/session.dart';
+import 'package:super_heng_bullion/assets/assets_page.dart';
+import 'package:super_heng_bullion/hub/hub_page.dart';
+import 'package:super_heng_bullion/price/price_page.dart';
+import 'package:super_heng_bullion/l10n/app_text.dart';
 import 'package:super_heng_bullion/theme/app_theme.dart';
+import 'package:super_heng_bullion/widgets/gold_bars_icon.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -14,84 +14,69 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  int _index = 0;
-  SessionController? _session;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final session = SessionScope.of(context);
-    if (identical(_session, session)) return;
-    _session?.removeListener(_onSession);
-    _session = session;
-    session.addListener(_onSession);
-  }
-
-  @override
-  void dispose() {
-    _session?.removeListener(_onSession);
-    super.dispose();
-  }
-
-  void _onSession() {
-    if (!mounted || _session == null) return;
-    if (!_session!.signedIn && _index != 0) {
-      setState(() => _index = 0);
-    }
-    if (_session!.takeLoginRequest()) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const LoginPage()),
-      );
-    }
-  }
-
-  Future<void> _select(int index) async {
-    final session = SessionScope.of(context);
-    if (!session.signedIn && index != 0) {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const LoginPage()),
-      );
-      return;
-    }
-    setState(() => _index = index);
-  }
+  int _index = 3;
 
   @override
   Widget build(BuildContext context) {
-    final session = SessionScope.of(context);
-
+    final t = AppText.of(context);
     return Scaffold(
       backgroundColor: AppColors.ink,
       body: IndexedStack(
         index: _index,
         children: [
-          RatesPage(visible: _index == 0),
-          CartPage(visible: _index == 1, onViewRates: () => setState(() => _index = 0)),
-          AccountPage(visible: _index == 2),
+          _SoonPage(title: t.tradeBook),
+          PricePage(visible: _index == 1),
+          _SoonPage(title: t.trade),
+          AssetsPage(visible: _index == 3),
+          const HubPage(),
         ],
       ),
       bottomNavigationBar: _TabBar(
         index: _index,
-        cartCount: session.cartCount,
-        onSelect: _select,
+        onSelect: (index) => setState(() => _index = index),
+      ),
+    );
+  }
+}
+
+class _SoonPage extends StatelessWidget {
+  const _SoonPage({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final soon = AppText.of(context).comingSoon;
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: text.titleMedium?.copyWith(fontSize: 20),
+            ),
+          ),
+          Expanded(
+            child: Center(child: Text(soon, style: text.bodySmall)),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _TabBar extends StatelessWidget {
-  const _TabBar({
-    required this.index,
-    required this.cartCount,
-    required this.onSelect,
-  });
+  const _TabBar({required this.index, required this.onSelect});
 
   final int index;
-  final int cartCount;
   final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context) {
+    final t = AppText.of(context);
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: AppColors.surface,
@@ -100,33 +85,89 @@ class _TabBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 64,
+          height: 76,
           child: Row(
             children: [
               _Tab(
-                tabKey: const Key('tab-rates'),
-                label: 'Rates',
-                icon: Icons.trending_up,
+                tabKey: const Key('tab-trade-book'),
+                label: t.tradeBook,
+                icon: Icons.receipt_long_outlined,
                 selected: index == 0,
                 onTap: () => onSelect(0),
               ),
               _Tab(
-                tabKey: const Key('tab-cart'),
-                label: 'Cart',
-                icon: Icons.shopping_bag_outlined,
+                tabKey: const Key('tab-price'),
+                label: t.price,
+                icon: Icons.show_chart,
                 selected: index == 1,
-                count: cartCount,
                 onTap: () => onSelect(1),
               ),
+              _TradeTab(label: t.trade, selected: index == 2, onTap: () => onSelect(2)),
               _Tab(
-                tabKey: const Key('tab-account'),
-                label: 'Account',
+                tabKey: const Key('tab-assets'),
+                label: t.assets,
+                iconBuilder: (color) => GoldBarsIcon(color: color, size: 24),
+                selected: index == 3,
+                onTap: () => onSelect(3),
+              ),
+              _Tab(
+                tabKey: const Key('tab-hub'),
+                label: t.hub,
                 icon: Icons.person_outline,
-                selected: index == 2,
-                onTap: () => onSelect(2),
+                selected: index == 4,
+                onTap: () => onSelect(4),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TradeTab extends StatelessWidget {
+  const _TradeTab({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? Colors.black : AppColors.gold;
+    return Expanded(
+      child: InkWell(
+        key: const Key('tab-trade'),
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Transform.translate(
+              offset: const Offset(0, -10),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.gold : AppColors.surface2,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.gold, width: 1.4),
+                ),
+                child: Icon(Icons.swap_horiz, color: color, size: 26),
+              ),
+            ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? AppColors.gold : AppColors.mist,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+          ],
         ),
       ),
     );
@@ -137,18 +178,18 @@ class _Tab extends StatelessWidget {
   const _Tab({
     required this.tabKey,
     required this.label,
-    required this.icon,
     required this.selected,
     required this.onTap,
-    this.count = 0,
+    this.icon,
+    this.iconBuilder,
   });
 
   final Key tabKey;
   final String label;
-  final IconData icon;
+  final IconData? icon;
+  final Widget Function(Color color)? iconBuilder;
   final bool selected;
   final VoidCallback onTap;
-  final int count;
 
   @override
   Widget build(BuildContext context) {
@@ -160,43 +201,13 @@ class _Tab extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(icon, color: color, size: 24),
-                if (count > 0)
-                  Positioned(
-                    right: -10,
-                    top: -6,
-                    child: Container(
-                      key: const Key('cart-badge'),
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: AppColors.gold,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                      child: Text(
-                        '$count',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          height: 1.2,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            iconBuilder?.call(color) ?? Icon(icon!, color: color, size: 24),
             const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ),
           ],

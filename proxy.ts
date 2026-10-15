@@ -1,39 +1,47 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { decrypt, decryptMember } from "@/lib/session-token";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { assetsHubEnabled, isAssetsHubPath } from "@/lib/feature-flags";
 
-export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const isAdmin = pathname.startsWith("/admin");
-  const isAdminLogin = pathname === "/admin/login";
-  const isMemberLogin = pathname === "/login";
-  const needsMember = pathname === "/rates" || pathname.startsWith("/portal");
-
-  if (isAdmin) {
-    const session = await decrypt(request.cookies.get("session")?.value);
-    if (!session && !isAdminLogin) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
-    }
-    if (session && isAdminLogin) {
-      return NextResponse.redirect(new URL("/admin", request.url));
-    }
+export function proxy(request: NextRequest) {
+  if (assetsHubEnabled() || !isAssetsHubPath(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
-
-  const member = await decryptMember(request.cookies.get("member_session")?.value);
-
-  if (needsMember && !member) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("next", pathname);
-    return NextResponse.redirect(login);
-  }
-
-  if (isMemberLogin && member) {
-    return NextResponse.redirect(new URL("/portal", request.url));
-  }
-
-  return NextResponse.next();
+  return new NextResponse(null, { status: 404 });
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/rates", "/login", "/portal", "/portal/:path*"],
+  matcher: [
+    "/admin/deposits",
+    "/admin/deposits/:path*",
+    "/admin/withdrawals",
+    "/admin/withdrawals/:path*",
+    "/admin/transfers",
+    "/admin/transfers/:path*",
+    "/admin/bank-accounts",
+    "/admin/bank-accounts/:path*",
+    "/admin/announcements",
+    "/admin/announcements/:path*",
+    "/admin/deposit-info",
+    "/admin/deposit-info/:path*",
+    "/api/mobile/announcements",
+    "/api/mobile/announcements/:path*",
+    "/api/mobile/assets",
+    "/api/mobile/assets/:path*",
+    "/api/mobile/bank-accounts",
+    "/api/mobile/bank-accounts/:path*",
+    "/api/mobile/deposit-info",
+    "/api/mobile/deposit-info/:path*",
+    "/api/mobile/deposits",
+    "/api/mobile/deposits/:path*",
+    "/api/mobile/password",
+    "/api/mobile/password/:path*",
+    "/api/mobile/prices",
+    "/api/mobile/prices/:path*",
+    "/api/mobile/transfers",
+    "/api/mobile/transfers/:path*",
+    "/api/mobile/wallet",
+    "/api/mobile/wallet/:path*",
+    "/api/mobile/withdrawals",
+    "/api/mobile/withdrawals/:path*",
+  ],
 };

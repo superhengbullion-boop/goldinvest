@@ -4,13 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/app/actions/auth";
 
-const GROUPS = [
+type NavLink = { href: string; label: string; exact?: boolean; hub?: boolean };
+
+const GROUPS: { label: string; links: NavLink[] }[] = [
   {
     label: "Business",
     links: [
       { href: "/admin", label: "Dashboard", exact: true },
       { href: "/admin/members", label: "Members" },
       { href: "/admin/orders", label: "Orders" },
+      { href: "/admin/deposits", label: "Deposits", hub: true },
+      { href: "/admin/withdrawals", label: "Withdrawals", hub: true },
+      { href: "/admin/transfers", label: "Transfers", hub: true },
+      { href: "/admin/bank-accounts", label: "Bank accounts", hub: true },
+      { href: "/admin/announcements", label: "Announcements", hub: true },
       { href: "/admin/messages", label: "Messages" },
     ],
   },
@@ -33,18 +40,31 @@ const GROUPS = [
   },
   {
     label: "Mobile app",
-    links: [{ href: "/admin/app", label: "App content" }],
+    links: [
+      { href: "/admin/app", label: "App content" },
+      { href: "/admin/deposit-info", label: "Deposit info", hub: true },
+    ],
   },
 ];
 
 export function AdminNav({
   unreadCount = 0,
   pendingOrderCount = 0,
+  pendingDepositCount = 0,
+  pendingWithdrawalCount = 0,
+  assetsHub = false,
 }: {
   unreadCount?: number;
   pendingOrderCount?: number;
+  pendingDepositCount?: number;
+  pendingWithdrawalCount?: number;
+  assetsHub?: boolean;
 }) {
   const current = usePathname();
+  const groups = GROUPS.map((group) => ({
+    ...group,
+    links: group.links.filter((link) => assetsHub || !link.hub),
+  })).filter((group) => group.links.length > 0);
   return (
     <aside className="flex w-64 flex-col border-r border-gold/20 bg-black px-5 py-8">
       <Link href="/admin" className="font-display text-2xl text-gold">
@@ -52,7 +72,7 @@ export function AdminNav({
       </Link>
       <p className="mt-1 text-xs uppercase tracking-[0.2em] text-mist">Admin</p>
       <nav className="mt-8 flex flex-1 flex-col gap-6 overflow-y-auto">
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.label}>
             <p className="px-3 text-xs uppercase tracking-[0.16em] text-mist">{group.label}</p>
             <div className="mt-2 flex flex-col gap-1">
@@ -65,7 +85,11 @@ export function AdminNav({
                     ? unreadCount
                     : link.href === "/admin/orders"
                       ? pendingOrderCount
-                      : 0;
+                      : link.href === "/admin/deposits"
+                        ? pendingDepositCount
+                        : link.href === "/admin/withdrawals"
+                          ? pendingWithdrawalCount
+                          : 0;
                 return (
                   <Link
                     key={link.href}

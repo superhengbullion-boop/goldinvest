@@ -2,9 +2,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:super_heng_bullion/account/account_page.dart';
 import 'package:super_heng_bullion/api/mobile_api.dart';
+import 'package:super_heng_bullion/app_content.dart';
+import 'package:super_heng_bullion/assets/assets_page.dart';
+import 'package:super_heng_bullion/assets/deposit_page.dart';
+import 'package:super_heng_bullion/auth/login_page.dart';
+import 'package:super_heng_bullion/cart/cart_page.dart';
 import 'package:super_heng_bullion/company/company_page.dart';
 import 'package:super_heng_bullion/main.dart';
+import 'package:super_heng_bullion/rates/rates_page.dart';
 import 'package:super_heng_bullion/splash/launch_splash.dart';
 import 'package:super_heng_bullion/splash/splash_logo.dart';
 import 'package:super_heng_bullion/session.dart';
@@ -182,6 +189,48 @@ class FakeApi extends MobileApi {
     cart = const CartResult(items: [], grandTotal: 0);
     return 'SHB-20261002-0001';
   }
+
+  String? submittedKind;
+  String? submittedComment;
+
+  @override
+  Future<MemberAssets> fetchAssets(String token) async {
+    return const MemberAssets(xauGrams: 0, fundMyr: 0, tradingLimitMyr: 0);
+  }
+
+  @override
+  Future<DepositInfo> fetchDepositInfo(String token) async => DepositInfo.fallback;
+
+  @override
+  Future<void> submitXauDeposit(String token) async {
+    submittedKind = 'xau';
+  }
+
+  @override
+  Future<void> submitFundDeposit(
+    String token, {
+    required List<int> bytes,
+    required String filename,
+    String comment = '',
+    String? bankAccountId,
+  }) async {
+    submittedKind = 'fund';
+    submittedComment = comment;
+  }
+}
+
+Future<void> pumpScreen(WidgetTester tester, SessionController session, Widget page) async {
+  final content = AppContentController(api: session.api);
+  await content.load();
+  await tester.pumpWidget(
+    AppContentScope(
+      controller: content,
+      child: SessionScope(
+        controller: session,
+        child: MaterialApp(theme: buildAppTheme(), home: Scaffold(body: page)),
+      ),
+    ),
+  );
 }
 
 void main() {
@@ -201,8 +250,10 @@ void main() {
         ],
       ),
     );
-    await tester.pumpWidget(
-      GoldInvestApp(session: SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile())),
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile()),
+      const RatesPage(visible: true),
     );
     await tester.pump();
     await tester.pump();
@@ -240,8 +291,10 @@ void main() {
 
   testWidgets('no rate book shows the contact message', (tester) async {
     final api = FakeApi(rates: const RatesResult(assigned: false, rows: [], updatedAt: null));
-    await tester.pumpWidget(
-      GoldInvestApp(session: SessionController(api: api, signedIn: true, token: 'token-1')),
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1'),
+      const RatesPage(visible: true),
     );
     await tester.pump();
     await tester.pump();
@@ -253,7 +306,6 @@ void main() {
     final api = FakeApi()..loginError = 'Invalid username or password.';
     final session = SessionController(api: api);
     await tester.pumpWidget(GoldInvestApp(session: session));
-    await tester.tap(find.byKey(const Key('tab-account')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('login-submit')));
@@ -287,8 +339,7 @@ void main() {
     final session = SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile());
     await tester.binding.setSurfaceSize(const Size(800, 2000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(GoldInvestApp(session: session));
-    await tester.tap(find.byKey(const Key('tab-account')));
+    await pumpScreen(tester, session, const _SignedOutGate(child: AccountPage(visible: true)));
     await tester.pump();
     await tester.pump();
 
@@ -325,10 +376,11 @@ void main() {
         ],
         grandTotal: 100,
       );
-    await tester.pumpWidget(
-      GoldInvestApp(session: SessionController(api: api, signedIn: true, token: 'token-1')),
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1'),
+      const _CartHost(),
     );
-    await tester.tap(find.byKey(const Key('tab-cart')));
     await tester.pump();
     await tester.pump();
 
@@ -356,9 +408,9 @@ void main() {
       ],
       grandTotal: 100,
     );
-    await tester.tap(find.byKey(const Key('tab-rates')));
+    await tester.tap(find.byKey(const Key('show-rates')));
     await tester.pump();
-    await tester.tap(find.byKey(const Key('tab-cart')));
+    await tester.tap(find.byKey(const Key('show-cart')));
     await tester.pump();
     await tester.pump();
     await tester.tap(find.widgetWithText(FilledButton, 'Place order'));
@@ -370,17 +422,18 @@ void main() {
 
   testWidgets('empty cart offers View rates', (tester) async {
     final api = FakeApi();
-    await tester.pumpWidget(
-      GoldInvestApp(session: SessionController(api: api, signedIn: true, token: 'token-1')),
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1'),
+      const _CartHost(),
     );
-    await tester.tap(find.byKey(const Key('tab-cart')));
     await tester.pump();
     await tester.pump();
     expect(find.text('Your cart is empty.'), findsOneWidget);
     expect(find.text('Place order'), findsNothing);
     await tester.tap(find.text('View rates'));
     await tester.pump();
-    expect(tester.widget<Icon>(find.byIcon(Icons.trending_up)).color, AppColors.gold);
+    expect(find.text('Live rates'), findsOneWidget);
   });
 
   testWidgets('account opens purchase history with an order card', (tester) async {
@@ -404,10 +457,11 @@ void main() {
       );
     await tester.binding.setSurfaceSize(const Size(800, 2000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(
-      GoldInvestApp(session: SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile())),
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile()),
+      const AccountPage(visible: true),
     );
-    await tester.tap(find.byKey(const Key('tab-account')));
     await tester.pump();
     await tester.pump();
     await tester.tap(find.byKey(const Key('open-history')));
@@ -426,10 +480,11 @@ void main() {
     final api = FakeApi();
     await tester.binding.setSurfaceSize(const Size(800, 2000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(
-      GoldInvestApp(session: SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile())),
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile()),
+      const AccountPage(visible: true),
     );
-    await tester.tap(find.byKey(const Key('tab-account')));
     await tester.pump();
     await tester.pump();
     await tester.tap(find.byKey(const Key('open-history')));
@@ -524,7 +579,7 @@ void main() {
     final api = FakeApi();
     await tester.binding.setSurfaceSize(const Size(800, 2000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(GoldInvestApp(session: SessionController(api: api)));
+    await pumpScreen(tester, SessionController(api: api), const RatesPage(visible: true));
     await tester.pump();
     await tester.tap(find.byKey(const Key('open-company')));
     await tester.pump();
@@ -549,10 +604,11 @@ void main() {
     final api = FakeApi();
     await tester.binding.setSurfaceSize(const Size(800, 2000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(
-      GoldInvestApp(session: SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile())),
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile()),
+      const AccountPage(visible: true),
     );
-    await tester.tap(find.byKey(const Key('tab-account')));
     await tester.pump();
     await tester.pump();
     await tester.tap(find.byKey(const Key('account-company')));
@@ -566,7 +622,7 @@ void main() {
     final api = FakeApi()..companyFails = true;
     await tester.binding.setSurfaceSize(const Size(800, 2000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(GoldInvestApp(session: SessionController(api: api)));
+    await pumpScreen(tester, SessionController(api: api), const RatesPage(visible: true));
     await tester.pump();
     await tester.tap(find.byKey(const Key('open-company')));
     await tester.pump();
@@ -596,8 +652,10 @@ void main() {
           _row(key: 'myr-usdt', label: 'MYR/USDT', comingSoon: true, buy: 0, sell: 0),
         ],
       );
-    await tester.pumpWidget(
-      GoldInvestApp(session: SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile())),
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile()),
+      const RatesPage(visible: true),
     );
     await tester.pump();
     await tester.pump();
@@ -620,13 +678,88 @@ void main() {
           _row(key: 'physical-gold-myr-kg', label: 'Physical Gold 999 - MYR/KG', buy: 400, sell: 410),
         ],
       );
-    await tester.pumpWidget(
-      GoldInvestApp(session: SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile())),
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile()),
+      const RatesPage(visible: true),
     );
     await tester.pump();
     await tester.pump();
     expect(find.text('Live rates'), findsOneWidget);
     expect(find.text('LOCK BUY'), findsOneWidget);
+  });
+
+  test('a transfer screenshot must be a jpg or png under 5MB', () {
+    expect(proofRejection(name: 'note.pdf', bytes: 10), 'Use a JPG or PNG file.');
+    expect(proofRejection(name: 'shot.JPG', bytes: 10), isNull);
+    expect(proofRejection(name: 'shot.png', bytes: 5 * 1024 * 1024 + 1), 'File must be under 5MB.');
+  });
+
+  testWidgets('assets opens deposit and submits physical gold', (tester) async {
+    final api = FakeApi();
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile()),
+      const AssetsPage(visible: true),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('0.00 g'), findsOneWidget);
+    expect(find.text('RM 0.00'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('open-deposit')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('+6072870221'), findsOneWidget);
+    expect(find.text('Physical Gold'), findsOneWidget);
+    expect(find.textContaining('contact SuperHeng Gold'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('deposit-submit')));
+    await tester.pump();
+    await tester.pump();
+    expect(api.submittedKind, 'xau');
+    expect(find.text('Your deposit is waiting for review.'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('deposit-tab-fund')));
+    await tester.pump();
+    expect(find.text('OCBC Bank Berhad'), findsWidgets);
+    expect(find.text('Unselected'), findsWidgets);
+    expect(find.text('* JPG, JPEG, and PNG files under 5MB.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('deposit-submit')));
+    await tester.pump();
+    expect(find.text('Upload a screenshot of the transfer.'), findsOneWidget);
+    expect(api.submittedKind, 'xau');
+  });
+
+  testWidgets('fund submit sends the screenshot and comment', (tester) async {
+    final api = FakeApi();
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpScreen(
+      tester,
+      SessionController(api: api, signedIn: true, token: 'token-1', profile: _profile()),
+      DepositPage(
+        pickPhoto: () async => const DepositPhoto(name: 'shot.jpg', bytes: [1, 2, 3]),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('deposit-tab-fund')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const Key('upload-photo')).first);
+    await tester.tap(find.byKey(const Key('upload-photo')).first);
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const Key('deposit-comment')));
+    await tester.enterText(find.byKey(const Key('deposit-comment')), 'Paid today');
+    await tester.tap(find.byKey(const Key('deposit-submit')));
+    await tester.pump();
+    await tester.pump();
+    expect(api.submittedKind, 'fund');
+    expect(api.submittedComment, 'Paid today');
+    expect(find.text('Your deposit is waiting for review.'), findsWidgets);
   });
 
   testWidgets('launch splash shows the bundled coin, then the app', (tester) async {
@@ -645,4 +778,54 @@ void main() {
     expect(await cachedSplashLogo(), file.path);
     await file.delete();
   });
+}
+
+class _SignedOutGate extends StatelessWidget {
+  const _SignedOutGate({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!SessionScope.of(context).signedIn) return const LoginPage();
+    return child;
+  }
+}
+
+class _CartHost extends StatefulWidget {
+  const _CartHost();
+
+  @override
+  State<_CartHost> createState() => _CartHostState();
+}
+
+class _CartHostState extends State<_CartHost> {
+  bool cart = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            TextButton(
+              key: const Key('show-rates'),
+              onPressed: () => setState(() => cart = false),
+              child: const Text('Rates'),
+            ),
+            TextButton(
+              key: const Key('show-cart'),
+              onPressed: () => setState(() => cart = true),
+              child: const Text('Cart'),
+            ),
+          ],
+        ),
+        Expanded(
+          child: cart
+              ? CartPage(visible: true, onViewRates: () => setState(() => cart = false))
+              : const RatesPage(visible: true),
+        ),
+      ],
+    );
+  }
 }

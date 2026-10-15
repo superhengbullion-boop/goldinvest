@@ -7,6 +7,7 @@ import {
   getElizXauUrl,
   type ElizMarketSnapshot,
 } from "@/lib/eliz-market";
+import { recordXauSamples } from "@/lib/price-samples";
 import { RATE_TIMEZONE } from "@/lib/rate-time";
 
 const ELIZ_METALS = [
@@ -72,6 +73,10 @@ export async function persistElizSnapshot(
     ],
   );
 
+  if (metal === "XAU") {
+    await recordXauSamples(snapshot);
+  }
+
   return { metal, currency: ELIZ_CURRENCY, price, source };
 }
 
@@ -87,7 +92,7 @@ export async function refreshElizQuotes(source: string) {
     const { metal } = ELIZ_METALS[i];
     if (item.status === "rejected") {
       const msg = item.reason instanceof Error ? item.reason.message : String(item.reason);
-      errors.push(`Eliz ${metal}: ${msg}`);
+      errors.push(`SuperHeng ${metal}: ${msg}`);
       console.error(`[rates] ${msg}`);
       continue;
     }
@@ -95,13 +100,13 @@ export async function refreshElizQuotes(source: string) {
       results.push(await persistElizSnapshot(metal, item.value, source));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      errors.push(`Eliz ${metal}: ${msg}`);
+      errors.push(`SuperHeng ${metal}: ${msg}`);
       console.error(`[rates] ${msg}`);
     }
   }
 
   if (results.length === 0) {
-    throw new Error(errors[0] ?? "Failed to refresh Eliz market snapshots.");
+    throw new Error(errors[0] ?? "Failed to refresh SuperHeng market snapshots.");
   }
 
   return { quotes: results, errors, timezone: RATE_TIMEZONE };
